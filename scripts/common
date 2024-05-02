@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+
+drop_caches()
+{
+  sync
+
+  echo 3 | sudo tee /proc/sys/vm/drop_caches
+}
+
+prepare_log()
+{
+  local timestamp=$(date "+%F-%H-%M-%S")
+  if [ -z ${1} ]; then
+    log_fn="${timestamp}-${version}-${db}-${fill}-${klen}-${vlen}"
+  else
+    log_fn="${1}-${timestamp}-${version}-${db}-${fill}-${klen}-${vlen}"
+  fi
+
+  sout="${log_fn}-out.log"
+  serr="${log_fn}-err.log"
+  start="${log_fn}-start-smart.log"
+  end="${log_fn}-end-smart.log"
+  bio="${log_fn}-bio.log"
+}
+
+smart_start()
+{
+  sync
+  sudo smartctl ${drive} -a > ${start}
+  sudo smartctl ${drive} -l devstat >> ${start}
+  sudo cat /proc/diskstats >> ${start}
+}
+
+smart_end()
+{
+  sync
+  sudo smartctl ${drive} -a > ${end}
+  sudo smartctl ${drive} -l devstat >> ${end}
+  sudo cat /proc/diskstats >> ${end}
+}
+
+copy_log()
+{
+  if ls ${sys[1]}/log* 1> /dev/null 2>&1;
+  then
+    cat ${sys[1]}/log* >> "${log_fn}.log"
+  fi
+
+  if [[ -e ${sys[1]}/LOG ]]
+  then
+    cat ${sys[1]}/LOG >> "${log_fn}.log"
+  fi
+}
+
+biosnoop_wrapped()
+{
+  sudo ${BIOSNOOP_EXE} > ${bio} &
+  local bio_pid=$!
+
+  sleep 3
+
+  "$@"
+
+  sudo kill -SIGKILL ${bio_pid}
+}
+
+smartctl_wrapped()
+{
+  smart_start
+
+  "$@"
+
+  smart_end
+  copy_log
+}
+
+set_drive()
+{
+  drive=$(df -P ${basedir} | awk 'END{print $1}')
+  echo running on ${drive}
+}
+
+
+set_args()
+{
+  db=${1}
+  fill=${2}
+  klen=${3}
+  vlen=${4}
+  inc=${5}
+
+  if [ -z "${6}" ]; then
+    basedir="${HOME}/mnt/${USER}"
+  else
+    basedir=${6}
+  fi
+
+  mkdir -p $basedir
+  echo dir $basedir
+
+  maxk=$((${fill} - 1))
+  version="$(git rev-parse --short HEAD)"
+
+  case $1 in
+  xdb-full)
+    #          dir,              cache-mb  mt_size, wal_size, ckeys, tags, dbits, inc_rebuild, nr_workers, co_per_worker, worker_cores
+    sys=('xdb' "$basedir/xdb-full" '0'     '4096'     'auto'    '0'    '0'      '0'     '0'         'auto'    'auto'           'auto')
+    ;;
+  xdb-inc)
+    #          dir,               cache-mb  mt_size, wal_size, ckeys, tags, dbits, inc_rebuild, nr_workers, co_per_worker, worker_cores
+    sys=('xdb' "$basedir/xdb-inc" '0'     '4096'     'auto'    '0'    '0'      '0'     '1'         'auto'    'auto'           'auto')
+    ;;
+  xdb-inc-dbits)
+    #          dir,                    cache-mb  mt_size, wal_size, ckeys, tags, dbits, inc_rebuild, nr_workers, co_per_worker, worker_cores
+    sys=('xdb' "$basedir/xdb-inc-dbits" '0'     '4096'     'auto'    '0'    '0'      '1'     '1'         '1'    '0'           'auto')
+    ;;
+  xdb-dbits)
+    #          dir,                    cache-mb  mt_size, wal_size, ckeys, tags, dbits, inc_rebuild, nr_workers, co_per_worker, worker_cores
+    sys=('xdb' "$basedir/xdb-dbits"     '0'     '4096'     'auto'    '0'    '0'      '1'     '0'         'auto'    'auto'           'auto')
+    ;;
+  rdb-rw)
+    sys=('rdb' "$basedir/rdb" '1')
+    ;;
+  rdb-ro)
+    sys=('rdb' "$basedir/rdb" '0')
+    ;;
+  *)
+    echo "sys: xdb-full xdb-dbits rdb-rw rdb-ro"
+    exit 0
+    ;;
+  esac
+}
+
+make_executables()
+{
+  case ${db} in
+    xdb*)
+      make -B REMIXDB=y dbtest1.out ycsbtest.out
+      ;;
+    rdb*)
+      make -B ROCKSDB=y dbtest1.out ycsbtest.out
+      ;;
+  esac
+}
+
+BIOSNOOP_EXE=/usr/share/bcc/tools/biosnoop
