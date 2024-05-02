@@ -1,17 +1,10 @@
 #!/usr/bin/env bash
 
-zipfian_write_exp()
-{
-  prepare_log zipf-write
-
-  smartctl_wrapped ./dbtest1.out api ${sys[@]} \
-    rgen unizipf 0 ${maxk} 1000 pass  1 1 $((${fill} / 200)) 20  1   3  s ${klen} ${vlen} \
-    > >(tee ${sout}) 2> >(tee ${serr} >&2)
-}
+source $(dirname "$0")/common
 
 zipfian_range_read_exp()
 {
-  prepare_log zipf-read
+  prepare_log zipf-read-seek
 
   local nscan=0
   biosnoop_wrapped smartctl_wrapped ./dbtest1.out api ${sys[@]} \
@@ -19,9 +12,19 @@ zipfian_range_read_exp()
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
 }
 
+zipfian_point_read_exp()
+{
+  prepare_log zipf-read-probe
+
+  local nscan=0
+  biosnoop_wrapped smartctl_wrapped ./dbtest1.out api ${sys[@]} \
+    rgen unizipf 0 ${maxk} 1000 pass  1 0 600 10  1   3  p ${klen} ${nscan} \
+    > >(tee ${sout}) 2> >(tee ${serr} >&2)
+}
+
 range_read_exp()
 {
-  prepare_log random-read
+  prepare_log random-read-seek
 
   local nscan=0
   biosnoop_wrapped smartctl_wrapped ./dbtest1.out api ${sys[@]} \
@@ -29,48 +32,25 @@ range_read_exp()
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
 }
 
-warmup()
+point_read_exp()
 {
-  drop_caches
-
-  prepare_log warmup
+  prepare_log random-read-probe
 
   local nscan=0
-  smartctl_wrapped ./dbtest1.out api ${sys[@]} \
-    rgen uniform 0 ${maxk} pass  1 1 163840 400 1   3  n ${klen} ${nscan} \
+  biosnoop_wrapped smartctl_wrapped ./dbtest1.out api ${sys[@]} \
+    rgen uniform 0 ${maxk} pass  1 0 600 5  1   3  p ${klen} ${nscan} \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
 }
 
-run_dbtest1()
-{
-  set_args "$@"
+prep "$@"
 
-  make -B REMIXDB=y dbtest1.out
+warmup
 
-  set_drive
+range_read_exp
 
-  write_exp
+point_read_exp
 
-  warmup
+zipfian_range_read_exp
 
-  range_read_exp
+zipfian_point_read_exp
 
-  zipfian_range_read_exp
-
-  zipfian_write_exp
-}
-
-# rw_ratio <percent_read> <percent_write>
-rw_ratio()
-{
-  smartctl_wrapped ./ycsbtest.out api ${sys[@]} \
-    rgen unizipf 0 ${maxk} 1000  pass  1 0 10 20 0 7 $2  0 $1   0  ${klen} ${vlen} 10 \
-    > >(tee ${sout}) 2> >(tee ${serr} >&2)
-}
-
-
-ulimit -n 400000
-
-ulimit -a
-
-run_dbtest1 "$@"

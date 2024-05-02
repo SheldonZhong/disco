@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
+source $(dirname "$0")/common
+
 ycsb()
 {
-  warmup
 
   prepare_log YCSB-A
   echo Workload A, 50% get 50% set
@@ -54,17 +55,9 @@ ycsb()
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
 }
 
-run_ycsbtest()
-{
-  set_args "$@"
+prep "$@"
 
-  make -B REMIXDB=y ycsbtest.out
-  make -B REMIXDB=y dbtest1.out
+warmup
 
-  set_drive
-
-  write_exp
-
-  ycsb
-}
+ycsb
 

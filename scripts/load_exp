@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 
-set -e
-
 source $(dirname "$0")/common
 
-write_exp()
+load_exp()
 {
   drop_caches
 
@@ -15,11 +13,7 @@ write_exp()
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
 }
 
-set_args "$@"
+prep "$@"
 
-make_executables
-
-set_drive
-
-write_exp
+load_exp
 
