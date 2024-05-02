@@ -137,10 +137,10 @@ make_executables()
 {
   case ${db} in
     xdb*)
-      make -B REMIXDB=y dbtest1.out ycsbtest.out
+      make REMIXDB=y dbtest1.out ycsbtest.out
       ;;
     rdb*)
-      make -B ROCKSDB=y dbtest1.out ycsbtest.out
+      make ROCKSDB=y dbtest1.out ycsbtest.out
       ;;
   esac
 }
@@ -167,5 +167,9 @@ prep()
 }
 
 BIOSNOOP_EXE=/usr/share/bcc/tools/biosnoop
+
+if [ ! -f "$BIOSNOOP_EXE" ]; then
+  echo ${BIOSNOOP_EXE} does not exist. Follow the instruction to build it from source
+fi
 
 ulimit -n 400000
