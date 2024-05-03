@@ -170,6 +170,7 @@ BIOSNOOP_EXE=/usr/share/bcc/tools/biosnoop
 
 if [ ! -f "$BIOSNOOP_EXE" ]; then
   echo ${BIOSNOOP_EXE} does not exist. Follow the instruction to build it from source
+  exit
 fi
 
 ulimit -n 400000

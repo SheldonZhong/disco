@@ -25,9 +25,11 @@ apt-get install -y zip bison build-essential cmake flex git libedit-dev \
 Build bcc from source
 
 ```
-cd
 git clone https://github.com/iovisor/bcc.git
-mkdir bcc/build; cd bcc/build
+cd bcc
+git checkout v0.30.0
+git submodule update
+mkdir build; cd build
 cmake ..
 make -j
 sudo make install
@@ -41,13 +43,14 @@ popd
 Clone the code
 
 ```
+cd
 git clone https://github.com/SheldonZhong/disco.git
 ```
 
 Build RocksDB and setup the header file
 
 ```
-cd ~
+cd
 git clone https://github.com/facebook/rocksdb.git
 cd ~/rocksdb
 git checkout v8.10.0
@@ -55,11 +58,11 @@ make -j static_lib
 cp ./librocksdb.a ~/disco
 mkdir -p ~/disco/include/rocksdb
 cp ~/rocksdb/include/rocksdb/c.h ~/disco/include/rocksdb
-cd ~/disco
 ```
 
 # Run micro-benchmark
 ```
+cd ~/disco
 make RCACHE_TRACE=y msstio.out && ./msstio.out -k <keyfile path> -120788344.mmapkv -v 120 -r unizipf -m existing -q 100000 -n 2393134
 # simulate cache replacement
 sim.sh
@@ -72,6 +75,7 @@ save_trace.sh <folder>
 You need root / sudo to make `epbf`, `smartctl`, and some more tools work.
 
 ```
+cd ~/disco
 ./scripts/load_exp xdb-dbits 1010580539 16 120 624538773 <mount point>
 ./scripts/load_exp xdb-full 1010580539 16 120 624538773 <mount point>
 ./scripts/load_exp rdb-rw 1010580539 16 120 624538773 <mount point>
