@@ -989,19 +989,19 @@ main(int argc, char ** argv)
       // compare the I/O of bloom filters and dbits, and remix
 
       // remix
-      // build_and_test(&ti);
+      build_and_test(&ti);
 
       // remix + dbits
-      // ti.dbits = true;
-      // build_and_test(&ti);
+      ti.dbits = true;
+      build_and_test(&ti);
 
       // only has merging iterators
       ti.fs = &mbtx_fs;
       build_and_test(&ti);
 
       // merging iterators with bt bloom filters
-      // ti.bt_bloom = true;
-      // build_and_test(&ti);
+      ti.bt_bloom = true;
+      build_and_test(&ti);
 
       // merging iterators with leaf bloom filters
       // ti.bt_bloom = false;

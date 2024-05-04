@@ -63,7 +63,7 @@ cp ~/rocksdb/include/rocksdb/c.h ~/disco/include/rocksdb
 # Run micro-benchmark
 ```
 cd ~/disco
-make RCACHE_TRACE=y msstio.out && ./msstio.out -k <keyfile path> -120788344.mmapkv -v 120 -r unizipf -m existing -q 100000 -n 2393134
+make msstio.out && ./msstio.out -k <keyfile path> -v 120 -r unizipf -m existing -q 100000 -n 2393134
 # simulate cache replacement
 sim.sh
 sim_csv.sh

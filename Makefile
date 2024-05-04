@@ -48,9 +48,7 @@ TGT-wh += whdemo whdbg
 .PHONY : wh
 wh : $(addsuffix .out,$(TGT-wh))
 
-LIB-whdbg.out += readline
-FLG-whdbg.out += -DWORMHOLE_DEBUG
-FLG-whu64test.out += -DWORMHOLE_DEBUG
+FLG-msstio.out += -DRCACHE_TRACE
 
 #### xdb
 TGT-xdb += mssttest msstztest sstdump mbtytest
@@ -74,7 +72,6 @@ bench : $(addsuffix .out,$(TGT-bench))
 
 .PHONY : more
 more : $(addsuffix .out,$(TGT-more))
-
 
 # when $ make FORKER_PAPI=y
 ifeq ($(FORKER_PAPI),y)
