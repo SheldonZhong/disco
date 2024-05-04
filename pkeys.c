@@ -21,6 +21,39 @@ struct pkf {
 };
 
 // pkeys factory {{{
+  static u64
+pext_u64(u64 src, u64 mask)
+{
+#if defined(__BMI2__)
+  return (u64)(_pext_u64(src, mask));
+#else
+  u64 res = 0;
+  for (u64 bp = 1; mask != 0; bp += bp) {
+    if (src & mask & -mask) {
+      res |= bp;
+    }
+    mask &= (mask - 1);
+  }
+  return res;
+#endif
+}
+
+  static u32
+pext_u32(u32 src, u32 mask)
+{
+#if defined(__BMI2__)
+  return (u32)(_pext_u32(src, mask));
+#else
+  u32 res = 0;
+  for (u32 bp = 1; mask != 0; bp += bp) {
+    if (src & mask & -mask) {
+      res |= bp;
+    }
+    mask &= (mask - 1);
+  }
+  return res;
+#endif
+}
 
   struct pkf *
 pkf_create()
@@ -165,7 +198,7 @@ mem_pext1(const u8 * mem, const u32 len, const u8 * dkey, u32 dkey_len, u32 tot1
     const u64 m = *(const u64 *)(dkey+clen);
     const u64 v1 = __builtin_bswap64(v);
     const u64 m1 = __builtin_bswap64(m);
-    const u64 t = _pext_u64(v1, m1);
+    const u64 t = pext_u64(v1, m1);
     int shift = __builtin_popcountl(m);
     tshift += shift;
     ret <<= shift;
@@ -180,7 +213,7 @@ mem_pext1(const u8 * mem, const u32 len, const u8 * dkey, u32 dkey_len, u32 tot1
     const u32 m = *(const u32 *)(dkey+clen);
     const u32 v1 = __builtin_bswap32(v);
     const u32 m1 = __builtin_bswap32(m);
-    const u32 t = _pext_u32(v1, m1);
+    const u32 t = pext_u32(v1, m1);
     int shift = __builtin_popcount(m);
     tshift += shift;
     ret <<= shift;
@@ -197,7 +230,7 @@ mem_pext1(const u8 * mem, const u32 len, const u8 * dkey, u32 dkey_len, u32 tot1
     m <<= 8;
     clen++;
   }
-  const u32 t = _pext_u32(v, m);
+  const u32 t = pext_u32(v, m);
   int shift = __builtin_popcount(m);
   tshift += shift;
   ret <<= shift;
@@ -230,7 +263,7 @@ mem_pext0(const u8 * mem, const u32 len,
       mkp |= cmask;
 
       if (mkp & 0xFF00000000000000) {
-        u64 t = _pext_u64(kvp, mkp);
+        u64 t = pext_u64(kvp, mkp);
         int shift = __builtin_popcountll(mkp);
         tot_shift += shift;
         ret <<= shift;
@@ -242,7 +275,7 @@ mem_pext0(const u8 * mem, const u32 len,
   }
 
   if (mkp) {
-    u64 t = _pext_u64(kvp, mkp);
+    u64 t = pext_u64(kvp, mkp);
     int shift = __builtin_popcountll(mkp);
     tot_shift += shift;
     ret  <<= shift;
