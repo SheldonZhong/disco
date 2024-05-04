@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+set -e
+
+if [ $# -lt 1 ]; then
+  echo "usage $0 <key file>"
+  exit 1
+fi
+
+if ! [ -f "$1" ]; then
+  echo "key file $1 does not exist"
+  exit 1
+fi
+
+make msstio.out
+
+./msstio.out -k $1 -v 120 -r unizipf -m existing -q 100000 -n 2393134
+
+foldername="trace-$(date +'%Y-%m-%d-%H-%M-%S')"
+mkdir ${foldername}
+
+echo "Traces saved to folder ${foldername}"
+
+mv *.trace ${foldername}
+
+mv *.meta ${foldername}
+
+$(dirname "$0")/sim_csv.sh ${foldername}
+

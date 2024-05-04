@@ -5,7 +5,7 @@ Dependencies for DiscoDB and RemixDB
 Supported on Ubuntu Jammy 22.04 (CloudLab default image)
 
 ```
-apt-get -y install sudo git build-essential cmake clang python3-dev
+apt-get -y install sudo git build-essential cmake clang python3-dev parallel
 ```
 
 Dependencies for building RocksDB
