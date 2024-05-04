@@ -6,7 +6,7 @@ Dependencies for DiscoDB and RemixDB
 Supported on Ubuntu Jammy 22.04 (CloudLab default image)
 
 ```
-apt-get -y install sudo git build-essential cmake clang python3-dev parallel
+apt-get -y install sudo git build-essential cmake clang python3 parallel python-is-python3 python3-pip
 ```
 
 Dependencies for building RocksDB
@@ -20,7 +20,7 @@ Dependencies for building bcc
 ```
 apt-get install -y zip bison build-essential cmake flex git libedit-dev \
   libllvm14 llvm-14-dev libclang-14-dev python3 zlib1g-dev libelf-dev libfl-dev python3-setuptools \
-  liblzma-dev libdebuginfod-dev arping netperf iperf python-is-python3
+  liblzma-dev libdebuginfod-dev arping netperf iperf
 ```
 
 Build bcc from source
@@ -60,6 +60,9 @@ cp ./librocksdb.a ~/disco
 mkdir -p ~/disco/include/rocksdb
 cp ~/rocksdb/include/rocksdb/c.h ~/disco/include/rocksdb
 ```
+
+There is also a script `./scripts/setup_cloudlab` that does this all,
+assuming you have this repo cloned in `~/disco`.
 
 ## Run micro-benchmark
 We are still working on how to share our dataset files so people can access it anonymously.
