@@ -1,4 +1,5 @@
-# Dependencies
+# Disco
+## Dependencies
 
 Dependencies for DiscoDB and RemixDB
 
@@ -60,14 +61,22 @@ mkdir -p ~/disco/include/rocksdb
 cp ~/rocksdb/include/rocksdb/c.h ~/disco/include/rocksdb
 ```
 
-# Run micro-benchmark
+## Run micro-benchmark
+We are still working on how to share our dataset files so people can access it anonymously.
+For now, it should work with a plain text file with one key each line, if you have your own dataset.
+`-n <number of keys>` specifies number of keys that the program considers.
+There will eventually be about 75% of the keys actually inserted.
+Table files have internal limitations of 256MB in size.
+You will have to adjust the number of keys and value lengths accordingly.
 ```
-cd ~/disco
-make msstio.out && ./msstio.out -k <keyfile path> -v 120 -r unizipf -m existing -q 100000 -n 2393134
-# simulate cache replacement
-sim.sh
-sim_csv.sh
-save_trace.sh <folder>
+./scripts/microbench -k <key file>
+                     -n <number of keys>
+                     -v <value length>
+                     -q <number of queries>
+                     -r <uniform/zipfian/unizipf>
+                     -m <mixed/existing/non-existing>
+
+./scripts/microbench -k <email address key> -n 2393134 -v 120 -r uniform -m mixed -q 100000
 ```
 
 # Run database experiments
