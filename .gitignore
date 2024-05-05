@@ -18,6 +18,7 @@ trace-*
 *.ipynb
 *.meta
 *.trace
+*.pdf
 perf.data*
 tags
 GPATH

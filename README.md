@@ -6,7 +6,8 @@ Dependencies for DiscoDB and RemixDB
 Supported on Ubuntu Jammy 22.04 (CloudLab default image)
 
 ```
-apt-get -y install sudo git build-essential cmake clang python3 parallel python-is-python3 python3-pip
+apt-get -y install sudo git build-essential cmake clang python3 parallel python-is-python3 \
+  python3-pip libcairo2-dev pkg-config python3-dev
 ```
 
 Dependencies for building RocksDB
@@ -62,6 +63,12 @@ mkdir -p ~/disco/include/rocksdb
 cp ~/rocksdb/include/rocksdb/c.h ~/disco/include/rocksdb
 ```
 
+Install python package dependencies for plotting graphs
+```
+cd ~/disco
+pip install -r ./requirements.txt
+```
+
 There is also a script `./scripts/setup_cloudlab` that does this all,
 assuming you have this repo cloned in `~/disco`.
 
@@ -82,6 +89,16 @@ You will have to adjust the number of keys and value lengths accordingly.
 
 ./scripts/microbench -k <email address key> -n 2393134 -v 120 -r uniform -m mixed -q 100000
 ```
+
+After that it should generate a folder `trace-<timestamp>` and a matching CSV file `trace-<timestamp>.csv`,
+where `<timestamp>` has a format that looks like `trace-2024-05-05-18-32-17`.
+
+You can generate the plots in the paper by
+```
+./scripts/plot_microbench.py trace-<timestamp>
+```
+This will generate `intro-exp.pdf`, `eval_seek_8.pdf`, and `eval_probe_8_mixed.pdf`
+Do remember to install the python package dependencies for plotting.
 
 # Run database experiments
 

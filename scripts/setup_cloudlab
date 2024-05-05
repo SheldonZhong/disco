@@ -6,7 +6,8 @@ sudo apt-get -y update
 sudo apt-get -y upgrade
 
 # dependencies for disco
-sudo apt-get -y install sudo git build-essential cmake clang python3 parallel python-is-python3 python3-pip
+sudo apt-get -y install sudo git build-essential cmake clang python3 parallel python-is-python3 \
+  python3-pip libcairo2-dev pkg-config python3-dev
 
 # dependencies for RocksDB
 sudo apt-get -y install libgflags-dev libsnappy-dev zlib1g-dev libbz2-dev liblz4-dev libzstd-dev
@@ -42,3 +43,6 @@ cp ./librocksdb.a ~/disco
 mkdir -p ~/disco/include/rocksdb
 cp ~/rocksdb/include/rocksdb/c.h ~/disco/include/rocksdb
 
+# plotting dependencies
+cd ~/disco
+pip install -q ./requirements.txt
