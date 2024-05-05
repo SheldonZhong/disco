@@ -19,7 +19,7 @@ basedir=$(dirname "$0")
 
 LRU_SIM="${basedir}/../lru/lru.out"
 
-if [ -f "$LRU_SIM"  ]; then
+if ! [ -f "$LRU_SIM"  ]; then
   echo "$LRU_SIM does not exist."
   pushd $PWD
   cd "${basedir}/../lru"

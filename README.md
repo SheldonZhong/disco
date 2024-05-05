@@ -26,6 +26,7 @@ apt-get install -y zip bison build-essential cmake flex git libedit-dev \
 Build bcc from source
 
 ```
+cd
 git clone https://github.com/iovisor/bcc.git
 cd bcc
 git checkout v0.30.0
