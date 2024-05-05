@@ -661,6 +661,7 @@ test_probe_io(char * const dirname, char * const api_str,
   // use tiemstamp for the dump filename
   char buff[512];
   char ts[64];
+  sleep(1);
   time_stamp2(ts, 64);
   sprintf(buff, "rcache-%s.trace", ts);
   rcache_set_dump_file(rc, buff);
@@ -718,6 +719,7 @@ test_seek_io(char * const dirname, char * const api_str,
   // use tiemstamp for the dump filename
   char buff[512];
   char ts[64];
+  sleep(1);
   time_stamp2(ts, 64);
   sprintf(buff, "rcache-%s.trace", ts);
   rcache_set_dump_file(rc, buff);
