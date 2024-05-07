@@ -89,12 +89,11 @@ set_args()
   fill=${2}
   klen=${3}
   vlen=${4}
-  inc=${5}
 
-  if [ -z "${6}" ]; then
+  if [ -z "${5}" ]; then
     basedir="${HOME}/mnt/${USER}"
   else
-    basedir=${6}
+    basedir=${5}
   fi
 
   mkdir -p $basedir
