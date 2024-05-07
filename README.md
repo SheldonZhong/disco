@@ -132,10 +132,42 @@ To run a loading experiment
 `./scripts/load_exp <db_name> <number_of_keys> <key_length> <value_length> <mount_point>`
 
 # DiscoDB
-./scripts/load_exp xdb-dbits 1010580539 16 120 <mount point>
+./scripts/load_exp xdb-dbits 1010580539 16 120 <mount_point>
 # RemixDB
-./scripts/load_exp xdb-full 1010580539 16 120 <mount point>
+./scripts/load_exp xdb-full 1010580539 16 120 <mount_point>
 # RocksDB
-./scripts/load_exp rdb-rw 1010580539 16 120 <mount point>
+./scripts/load_exp rdb-rw 1010580539 16 120 <mount_point>
+```
+
+### Read experiments
+
+`./scripts/read_bench` runs the read experiments.
+It will first warm up the page cache then perform the read experiments.
+There are four sets of experiments: uniform range query (seek), uniform point queries (probe),
+skewed range query, and skewed point query.
+
+```
+# DiscoDB
+./scripts/read_bench xdb-dbits 1010580539 16 120 <mount_point>
+# RemixDB
+./scripts/read_bench xdb-full 1010580539 16 120 <mount_point>
+# RocksDB
+./scripts/read_bench rdb-ro  1010580539 16 120 <mount_point>
+```
+
+Note here that we open RocksDB in read-only mode to make sure all systems are evaluated equally.
+
+### YCSB
+
+`./scripts/ycsb` runs the YCSB experiments.
+It will first warmup the page cache then run the YCSB workloads from A to F.
+
+```
+# DiscoDB
+./scripts/ycsb xdb-dbits 1010580539 16 120 <mount_point>
+# RemixDB
+./scripts/ycsb xdb-full 1010580539 16 120 <mount_point>
+# RocksDB
+./scripts/ycsb rdb-rw  1010580539 16 120 <mount_point>
 ```
 
