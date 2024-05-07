@@ -10,7 +10,7 @@
 # X.out : xyz.h xyz.c # for extra dependences that are to be compiled/linked.
 
 # X => X.out
-TARGETS += libtest
+TARGETS +=
 # X => X.c only
 SOURCES +=
 SOURCES += $(EXTRASRC)
@@ -33,45 +33,22 @@ EXTERNDEP +=
 FLG +=
 LIB += m
 
-MOD-libtest.out += ord
-
 #### all
 # tools without external deps
 TGT-all += $(TARGETS)
 .PHONY : all
 #all : $(addsuffix .out,$(TGT-all))
-all : bin wh xdb bench
-
-
-#### wh
-TGT-wh += whdemo whdbg
-.PHONY : wh
-wh : $(addsuffix .out,$(TGT-wh))
+all : bin bench
 
 FLG-msstio.out += -DRCACHE_TRACE
 
-#### xdb
-TGT-xdb += mssttest msstztest sstdump mbtytest
-.PHONY : xdb
-xdb : $(addsuffix .out,$(TGT-xdb))
-
 MOD-REMIX = blkio sst xdb bt common msstv msstz fs
-MOD-mssttest.out += $(MOD-REMIX)
-MOD-mbtytest.out += $(MOD-REMIX)
-MOD-rebuild_test.out += $(MOD-REMIX)
-MOD-partial_test.out += $(MOD-REMIX)
 MOD-msstio.out += $(MOD-REMIX)
 
 #### bench
 TGT-bench += dbtest1 ycsbtest
 .PHONY : bench
 bench : $(addsuffix .out,$(TGT-bench))
-
-#### more
-# collections
-
-.PHONY : more
-more : $(addsuffix .out,$(TGT-more))
 
 # when $ make FORKER_PAPI=y
 ifeq ($(FORKER_PAPI),y)
