@@ -7,7 +7,7 @@ Supported on Ubuntu Jammy 22.04 (CloudLab default image)
 
 ```
 apt-get -y install sudo git build-essential cmake clang python3 parallel python-is-python3 \
-  python3-pip libcairo2-dev pkg-config python3-dev
+  python3-pip libcairo2-dev pkg-config python3-dev smartmontools
 ```
 
 Dependencies for building RocksDB
@@ -100,18 +100,42 @@ You can generate the plots in the paper by
 This will generate `intro-exp.pdf`, `eval_seek_8.pdf`, and `eval_probe_8_mixed.pdf`
 Do remember to install the python package dependencies for plotting.
 
-# Run database experiments
+## Run database experiments
 
 You need root / sudo to make `epbf`, `smartctl`, and some more tools work.
 
+All these experiments have a similar file output.
+The output will have the format of `<prefix>-<suffix>.log`, where `<prefix>` has the format
 ```
-cd ~/disco
-./scripts/load_exp xdb-dbits 1010580539 16 120 624538773 <mount point>
-./scripts/load_exp xdb-full 1010580539 16 120 624538773 <mount point>
-./scripts/load_exp rdb-rw 1010580539 16 120 624538773 <mount point>
+<workload>-<timestamp>-<commit_hash>-<db_name>-<number_of_keys>-<key_length>-<value_length>
+```
+In this loading experiment, the `<workload>` is `load`.
+The `<suffix>` could be
+```
+- start-smart: the smartctl output before the experiment
+- end-smart: the smartctl output after the experiment
+- out: the stdout during the experiment
+- err: the stderr during the experiment
+- bio: the I/O traces using from biosnoop
+- <empty>: the log of the database
+```
+We will use some scripts to parse, extract, and plot the output.
 
-./scripts/load_exp <db name> 1010580539 16 120 624538773 <mount point>
+### Loading experiments
 
-./scripts/ycsb <db name> 1010580539 16 120 624538773 <mount point>
+`./scripts/load_exp` loads a database.
+It will write the specified number of keys in shuffled order.
+It loads the DB in 200 rounds, outputing one line of stat each round to both `stderr` and `stdout`.
+
+To run a loading experiment
+```
+`./scripts/load_exp <db_name> <number_of_keys> <key_length> <value_length> <mount_point>`
+
+# DiscoDB
+./scripts/load_exp xdb-dbits 1010580539 16 120 <mount point>
+# RemixDB
+./scripts/load_exp xdb-full 1010580539 16 120 <mount point>
+# RocksDB
+./scripts/load_exp rdb-rw 1010580539 16 120 <mount point>
 ```
 

@@ -9,7 +9,7 @@ load_exp()
   prepare_log load
 
   biosnoop_wrapped smartctl_wrapped ./dbtest1.out api ${sys[@]} \
-    rgen skipu   0 ${maxk} ${inc} pass  1 1 $((${fill} / 200)) 200 0   3  s ${klen} ${vlen} \
+    rgen shuffle 0 ${maxk} pass  1 1 $((${fill} / 200)) 200 0   3  s ${klen} ${vlen} \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
 }
 
