@@ -171,3 +171,18 @@ It will first warmup the page cache then run the YCSB workloads from A to F.
 ./scripts/ycsb rdb-rw  1010580539 16 120 <mount_point>
 ```
 
+### Run experiments with different memory budgets
+
+`./scripts/run_cgroups` could be used to run experiments under different memory budgets.
+It will run whatever is given to the argument with 16G, 32G, and 64G memory budgets.
+It then moves all `*.log` files into a directory.
+
+For example
+```
+./scripts/run_cgroups ./scripts/read_bench xdb-dbits 1010580539 16 120 <mount_point>
+./scripts/run_cgroups ./scripts/read_bench rdb-ro 1010580539 16 120 <mount_point>
+```
+
+*Note*: since the loading experiments and YCSB write to the database.
+The results might be inconsistent if the script is used directly to run those experiments.
+
