@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+for sz in 16G 32G 64G
+do
+  mkdir -p ${sz}
+  systemd-run --user --scope -p MemoryMax=${sz} "$@"
+  mv *.log ${sz}
+done
+
