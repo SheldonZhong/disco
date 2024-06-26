@@ -2,6 +2,8 @@
 
 set -e
 
+sudo swapoff -a
+
 sudo apt-get -y update
 sudo apt-get -y upgrade
 
