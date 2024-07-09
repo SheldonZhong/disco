@@ -136,10 +136,10 @@ make_executables()
 {
   case ${db} in
     xdb*)
-      make REMIXDB=y dbtest1.out ycsbtest.out
+      make -B REMIXDB=y dbtest1.out ycsbtest.out
       ;;
     rdb*)
-      make ROCKSDB=y dbtest1.out ycsbtest.out
+      make -B ROCKSDB=y dbtest1.out ycsbtest.out
       ;;
   esac
 }
