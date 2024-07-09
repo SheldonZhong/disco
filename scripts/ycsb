@@ -9,49 +9,49 @@ ycsb()
   echo Workload A, 50% get 50% set
 
   biosnoop_wrapped smartctl_wrapped ./ycsbtest.out api ${sys[@]} \
-    rgen unizipf 0 ${maxk} 1000  pass  1 0 10 20 1 7 50  0 50   0  ${klen} ${vlen} 10 \
+    rgen unizipf 0 ${maxk} 1000  pass  4 0 10 20 1 7 50  0 50   0  ${klen} ${vlen} 10 \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
 
   prepare_log YCSB-B
   echo Workload B, 95% get 5% set
 
   biosnoop_wrapped smartctl_wrapped ./ycsbtest.out api ${sys[@]} \
-    rgen unizipf 0 ${maxk} 1000  pass  1 0 10 20 1 7 5  0 95   0  ${klen} ${vlen} 10 \
+    rgen unizipf 0 ${maxk} 1000  pass  4 0 10 20 1 7 5  0 95   0  ${klen} ${vlen} 10 \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
 
   prepare_log YCSB-C
   echo Workload C 100% get
 
   biosnoop_wrapped smartctl_wrapped ./ycsbtest.out api ${sys[@]} \
-    rgen unizipf 0 ${maxk} 1000  pass  1 0 10 20 1 7 0  0 100  0  ${klen} ${vlen} 10 \
+    rgen unizipf 0 ${maxk} 1000  pass  4 0 10 20 1 7 0  0 100  0  ${klen} ${vlen} 10 \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
 
   prepare_log YCSB-D
   echo Workload D latest 5% set 95% get
 
   biosnoop_wrapped smartctl_wrapped ./ycsbtest.out api ${sys[@]} \
-    rgen latest 1000  pass  1 0 10 20 1 7 5  0 95  0  ${klen} ${vlen} 10 \
+    rgen latest 1000  pass  4 0 10 20 1 7 5  0 95  0  ${klen} ${vlen} 10 \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
 
   prepare_log range-warmup
   echo Workload debug 100% scan
 
   biosnoop_wrapped smartctl_wrapped ./ycsbtest.out api ${sys[@]} \
-    rgen unizipf 0 ${maxk} 1000  pass  1 0 10 20 1 7 0  0 0 100 ${klen} ${vlen} 50 \
+    rgen unizipf 0 ${maxk} 1000  pass  4 0 10 20 1 7 0  0 0 100 ${klen} ${vlen} 50 \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
 
   prepare_log YCSB-E
   echo Workload E 5% set 95% scan
 
   biosnoop_wrapped smartctl_wrapped ./ycsbtest.out api ${sys[@]} \
-    rgen unizipf 0 ${maxk} 1000  pass  1 0 10 20 1 7 5  0 0 95  ${klen} ${vlen} 50 \
+    rgen unizipf 0 ${maxk} 1000  pass  4 0 10 20 1 7 5  0 0 95  ${klen} ${vlen} 50 \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
 
   prepare_log YCSB-F
   echo Workload F read-modify-update 50% get 50% RMU
 
   biosnoop_wrapped smartctl_wrapped ./ycsbtest.out api ${sys[@]} \
-    rgen unizipf 0 ${maxk} 1000  pass  1 0 10 20 1 7 0 50 50 0  ${klen} ${vlen} 10 \
+    rgen unizipf 0 ${maxk} 1000  pass  4 0 10 20 1 7 0 50 50 0  ${klen} ${vlen} 10 \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
 }
 
