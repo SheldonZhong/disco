@@ -146,11 +146,12 @@ kv_refill_hex64(struct kv * const kv, const u64 hex, const void * const value, c
 kv_refill_hex64_klen(struct kv * const kv, const u64 hex,
     const u32 klen, const void * const value, const u32 vlen)
 {
-  strhex_64(kv->kv, hex);
   if (klen > 16) {
     kv->klen = klen;
-    memset(kv->kv + 16, '!', klen - 16);
+    memset(kv->kv, '!', klen - 16);
+    strhex_64(kv->kv + klen - 16, hex);
   } else {
+    strhex_64(kv->kv, hex);
     kv->klen = 16;
   }
   kv_refill_value(kv, value, vlen);
