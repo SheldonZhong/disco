@@ -175,6 +175,10 @@ remix_build(const char * const dirname, struct mbt * const x1,
             const u64 seq, const u32 nr_runs, struct mbt * const y0,
             const u32 nr_reuse, const bool gen_tags, const bool gen_dbits,
             const bool inc_rebuild, const u8 * merge_hist, const u64 hist_size);
+
+  extern struct mbt *
+mbty_create_at(const int dfd);
+
   extern u32
 remix_build_at(const int dfd, struct mbt * const x1,
                const u64 seq, const u32 nr_runs,

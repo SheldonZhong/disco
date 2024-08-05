@@ -1679,6 +1679,27 @@ struct mssty_iter {
 };
 
 // misc {{{
+  struct msst *
+mssty_create_at(const int dfd)
+{
+  struct msst * msst = msstx_open_at(dfd, 0, 0);
+  if (msst == NULL) {
+    return NULL;
+  }
+
+  if (!ssty_build_at(dfd, msst, 0, 0, NULL, 0, false, false, false, NULL, 0)) {
+    msstx_destroy(msst);
+    return NULL;
+  }
+
+  if (!mssty_open_y_at(dfd, msst)) {
+    msstx_destroy(msst);
+    return NULL;
+  }
+
+  return msst;
+}
+
   bool
 mssty_open_y_at(const int dfd, struct msst * const msst)
 {

@@ -4,8 +4,6 @@
 
 const struct fs_api sst_fs = {
   .mt_rcache = (void *)msst_rcache,
-  .x_open_at = (void *)msstx_open_at,
-  .x_destroy = (void *)msstx_destroy,
   .y_open_at = (void *)mssty_open_at,
   .y_open_y_at = (void *)mssty_open_y_at,
   .y_destroy = (void *)mssty_destroy,
@@ -33,6 +31,7 @@ const struct fs_api sst_fs = {
   .y_fprint = (void *)mssty_fprint,
   .y_iter_ts = (void *)mssty_iter_ts,
   .y_iter_seek_null = (void *)mssty_iter_seek_null,
+  .y_create_at = (void *)mssty_create_at,
   .y_build_at = (void *)ssty_build_at,
   .mt_stats = (void *)msst_stats,
   .x_open_at_reuse = (void *)msstx_open_at_reuse,
@@ -49,8 +48,6 @@ const struct fs_api sst_fs = {
 
 const struct fs_api bt_fs = {
   .mt_rcache = (void *)mbty_rcache,
-  .x_open_at = (void *)mbtx_open_at,
-  .x_destroy = (void *)mbtx_destroy,
   .y_open_at = (void *)mbty_open_at,
   .y_open_y_at = (void *)mbty_open_y_at,
   .y_destroy = (void *)mbty_destroy,
@@ -78,6 +75,7 @@ const struct fs_api bt_fs = {
   .y_fprint = (void *)mbty_fprint,
   .y_iter_ts = (void *)mbty_iter_ts,
   .y_iter_seek_null = (void *)mbty_iter_seek_null,
+  .y_create_at = (void *)mbty_create_at,
   .y_build_at = (void *)remix_build_at,
   .mt_stats = (void *)mbt_stats,
   .x_open_at_reuse = (void *)mbtx_open_at_reuse,

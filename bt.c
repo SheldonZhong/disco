@@ -2058,6 +2058,27 @@ remix_last_key(struct remix * const remix, struct kv * const out)
 // mbty {{{
 
 // open {{{
+  struct mbt *
+mbty_create_at(const int dfd)
+{
+  struct mbt * mbt = mbtx_open_at(dfd, 0, 0);
+  if (mbt == NULL) {
+    return NULL;
+  }
+
+  if (!remix_build_at(dfd, mbt, 0, 0, NULL, 0, false, false, false, NULL, 0)) {
+    mbtx_destroy(mbt);
+    return NULL;
+  }
+
+  if (!mbty_open_y_at(dfd, mbt)) {
+    mbtx_destroy(mbt);
+    return NULL;
+  }
+
+  return mbt;
+}
+
   bool
 mbty_open_y_at(const int dfd, struct mbt * const mbt)
 {

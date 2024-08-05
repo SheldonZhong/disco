@@ -226,6 +226,9 @@ ssty_fprint(struct ssty * const ssty, FILE * const fout);
 struct mssty_ref;
 struct mssty_iter;
 
+  extern struct msst *
+mssty_create_at(const int dfd);
+
   extern bool
 mssty_open_y_at(const int dfd, struct msst * const msst);
 

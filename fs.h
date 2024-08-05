@@ -152,8 +152,6 @@ mssty_miter_partial(void * const msst, struct miter * const miter, const u32 bes
 
 struct fs_api {
   void (* mt_rcache) (void * const msst, struct rcache * const rc);
-  void * (* x_open_at) (const int dfd, const u64 seq, const u32 nr_runs);
-  void (* x_destroy) (void * const msst);
   void * (* y_open_at) (const int dfd, const u64 seq, const u32 nr_runs);
   bool (* y_open_y_at) (const int dfd, void * const msst);
   void (*y_destroy) (void * const msst);
@@ -181,6 +179,7 @@ struct fs_api {
   void (* y_fprint) (void * const msst, FILE * const fout);
   bool (* y_iter_ts) (void * const y_iter);
   void (* y_iter_seek_null) (void * const y_iter);
+  void * (* y_create_at) (const int dfd);
   u32 (* y_build_at) (const int dfd, void * const msstx1,
     const u64 seq, const u32 nr_runs, void * const mssty0,
     const u32 run0, const bool gen_tags, const bool gen_dbits,

@@ -90,21 +90,7 @@ msstv_create(const u64 nslots, const u64 version)
   struct msstv *
 msstv_create_v0(const int dfd)
 {
-  // msstx nr_runs = 0
-  void * const msst = vzfs->x_open_at(dfd, 0, 0);
-  if (!msst)
-    return NULL;
-
-  if (!vzfs->y_build_at(dfd, msst, 0, 0, NULL, 0, false, false, false, NULL, 0)) {
-    vzfs->x_destroy(msst);
-    return NULL;
-  }
-
-  if (!vzfs->y_open_y_at(dfd, msst)) {
-    vzfs->x_destroy(msst);
-    return NULL;
-  }
-  // void * const mssty = mssty_open_at(dfd, 0, 0);
+  void * const msst = vzfs->y_create_at(dfd);
 
   // msstv
   struct msstv * const v = msstv_create(1, 1); // version = 1
