@@ -344,18 +344,11 @@ msstz_yq_consume(struct msstz_comp_info * const ci)
 
   // open a msstx and call ssty_build
   const u64 t0 = time_nsec();
-  void * const msst = vzfs->x_open_at_reuse(z->dfd, task->seq1, task->run1, task->y0, task->run0);
-  vzfs->mt_rcache(msst, z->rc);
-  u32 ysz = vzfs->y_build_at(z->dfd, msst, task->seq1, task->run1, task->y0, task->run0,
-      z->cfg.tags, z->cfg.dbits, z->cfg.inc_rebuild, task->t_build_history, task->hist_size);
-  if (!ysz)
-    debug_die();
+  u64 ysz = 0;
+  void * const msst = vzfs->y_build_at_reuse(z->dfd, z->rc, task->seq1, task->run1, task->y0, task->run0,
+      z->cfg.tags, z->cfg.dbits, z->cfg.inc_rebuild, task->t_build_history, task->hist_size, &ysz);
   ci->stat_writes += ysz;
 
-  // convert msstx to mssty
-  const bool ry = vzfs->y_open_y_at(z->dfd, msst);
-  if (!ry)
-    debug_die();
   task->y1 = msst; // done; the new partition is now loaded and ready to use
   if (task->t_build_history)
     free(task->t_build_history);
@@ -364,7 +357,7 @@ msstz_yq_consume(struct msstz_comp_info * const ci)
   //const struct ssty_meta * const ym = msst->ssty->meta;
   struct msst_stats stats;
   vzfs->mt_stats(msst, &stats);
-  logger_printf("%s dt-ms %lu ssty-build %lu %02u ysz %u xkv %u xsz %u valid %u\n",
+  logger_printf("%s dt-ms %lu ssty-build %lu %02u ysz %lu xkv %u xsz %u valid %u\n",
       __func__, dt / 1000000, task->seq1, task->run1,
       ysz, stats.totkv, stats.totsz, stats.valid);
   logger_printf("%s %s compaction, run0 %d run1 %u, rate %lf Mbps\n",

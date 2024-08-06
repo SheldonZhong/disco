@@ -5017,6 +5017,29 @@ remix_build(const char * const dirname, struct mbt * const x1,
   return ret;
 }
 
+  struct mbt *
+remix_build_at_reuse(const int dfd, struct rcache * const rc,
+               const u64 seq, const u32 nr_runs,
+               struct mbt * const y0, const u32 nr_reuse,
+               const bool gen_tags, const bool gen_dbits,
+               const bool inc_rebuild, const u8 * merge_hist, const u64 hist_size, u64 * ysz)
+{
+  struct mbt * mbt = mbtx_open_at_reuse(dfd, seq, nr_runs, y0, nr_reuse);
+  mbty_rcache(mbt, rc);
+
+  u32 ysize = remix_build_at(dfd, mbt, seq, nr_runs, y0, nr_reuse, gen_tags, gen_dbits, inc_rebuild, merge_hist, hist_size);
+  if (ysize == 0) {
+    debug_die();
+  }
+  *ysz = ysize;
+
+  bool ry = mbty_open_y_at(dfd, mbt);
+  if (ry == false) {
+    debug_die();
+  }
+  return mbt;
+}
+
   void
 mbty_miter_major(struct mbt * const mbty, struct miter * const miter)
 {

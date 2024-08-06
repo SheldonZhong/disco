@@ -3749,6 +3749,28 @@ ssty_build(const char * const dirname, struct msst * const msstx1,
   return ret;
 }
 
+  struct msst *
+ssty_build_at_reuse(const int dfd, struct rcache * const rc,
+    const u64 seq, const u32 nr_runs, struct msst * const mssty0,
+    const u32 run0, const bool gen_tags, const bool gen_dbits,
+    const bool inc_rebuild, const u8 * merge_list, const u64 hist_size, u64 * ysz)
+{
+  struct msst * msst = msstx_open_at_reuse(dfd, seq, nr_runs, mssty0, run0);
+  msst_rcache(msst, rc);
+
+  u32 ysize = ssty_build_at(dfd, msst, seq, nr_runs, mssty0, run0, gen_tags, gen_dbits, inc_rebuild, merge_list, hist_size);
+  if (ysize == 0) {
+    debug_die();
+  }
+  *ysz = ysize;
+
+  bool ry = mssty_open_y_at(dfd, msst);
+  if (ry == false) {
+    debug_die();
+  }
+  return msst;
+}
+
   void
 mssty_miter_major(struct msst * const msst, struct miter * const miter)
 {

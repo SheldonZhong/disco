@@ -153,7 +153,6 @@ mssty_miter_partial(void * const msst, struct miter * const miter, const u32 bes
 struct fs_api {
   void (* mt_rcache) (void * const msst, struct rcache * const rc);
   void * (* y_open_at) (const int dfd, const u64 seq, const u32 nr_runs);
-  bool (* y_open_y_at) (const int dfd, void * const msst);
   void (*y_destroy) (void * const msst);
   struct kv * (* y_first_key) (const void * const msst, struct kv * const out);
   struct kv * (* y_last_key) (const void * const msst, struct kv * const out);
@@ -180,12 +179,11 @@ struct fs_api {
   bool (* y_iter_ts) (void * const y_iter);
   void (* y_iter_seek_null) (void * const y_iter);
   void * (* y_create_at) (const int dfd);
-  u32 (* y_build_at) (const int dfd, void * const msstx1,
+  void * (* y_build_at_reuse) (const int dfd, struct rcache * const rc,
     const u64 seq, const u32 nr_runs, void * const mssty0,
     const u32 run0, const bool gen_tags, const bool gen_dbits,
-    const bool inc_rebuild, const u8 * merge_hist, const u64 hist_size);
+    const bool inc_rebuild, const u8 * merge_hist, const u64 hist_size, u64 * ysz);
   void (* mt_stats) (const void * const msst, struct msst_stats * const stats);
-  void * (*x_open_at_reuse) (const int dfd, const u64 seq, const u32 nr_runs, void * const msst0, const u32 nrun0);
   u64 (* t_build_at) (const int dfd, struct miter * const miter, const struct t_build_cfg * const cfg,
     const struct kv * const k0, const struct kv * const kz);
   u32 (* mt_accu_nkv_at) (const void * const msst, const u32 i);
