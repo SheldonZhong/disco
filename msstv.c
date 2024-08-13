@@ -6,7 +6,7 @@
 #include "fs.h"
 #include "logger.h"
 
-const struct fs_api * const vzfs = &bt_fs;
+const struct fs_api * const vzfs = &bt_dummy_fs;
 
 // msstv {{{
 struct msstv { // similar to a version in leveldb

@@ -97,6 +97,7 @@ bt_last_key(struct bt * const bt, struct kv * const out);
 // mbtx {{{
 // msst (multi-sst)
 struct mbt;
+struct mbtx_ref;
 struct mbtx_iter;
 
   extern struct mbt *
@@ -106,8 +107,8 @@ mbtx_open_at(const int dfd, const u64 seq, const u32 nr_runs);
   extern struct mbt *
 mbtx_open(const char * const dirname, const u64 seq, const u32 nrun);
 
-  struct mbt *
-mbtx_open_at_reuse(const int dfd, const u64 seq, const u32 nr_runs, struct mbt * const mbt0, const u32 nrun0);
+  extern struct mbt *
+mbtd_open_at(const int dfd, const u64 seq, const u32 nr_runs);
 
   extern u32
 mbtx_nr_pages(struct mbt * const mbt);
@@ -118,14 +119,53 @@ mbtx_rcache(struct mbt * const mbt, struct rcache * const rc);
   extern void
 mbtx_destroy(struct mbt * const mbt);
 
-  extern struct mbtx_iter *
-mbtx_iter_create(struct mbt * const mbt);
+  extern void
+mbtx_fprint(struct mbt * const mbt, FILE * const fout);
 
   extern struct kv *
-mbtx_get(struct mbt * const mbt, const struct kref * const key, struct kv * const out);
+mbtd_first_key(struct mbt * const mbt, struct kv * const out);
+
+  extern struct kv *
+mbtd_last_key(struct mbt * const mbt, struct kv * const out);
+
+  extern void
+mbtx_drop(struct mbt * const mbt);
+
+  extern void
+mbtx_drop_lazy(struct mbt * const mbt);
+
+  extern struct mbtx_iter *
+mbtx_iter_create(struct mbtx_ref * const ref);
+
+  extern struct mbtx_ref *
+mbtx_ref(struct mbt * const mbt);
+
+  extern struct mbt *
+mbtx_unref(struct mbtx_ref * const ref);
+
+  extern struct mbtx_iter *
+mbtx_iter_new();
+
+  extern void
+mbtx_iter_init(struct mbtx_iter * const iter, struct mbt * const mbt);
 
   extern bool
-mbtx_probe(struct mbt * const mbt, const struct kref * const key);
+mbtx_iter_ts(struct mbtx_iter * const iter);
+
+  extern struct kv *
+mbtx_get(struct mbtx_ref * const ref, const struct kref * const key, struct kv * const out);
+
+  extern struct kv *
+mbtx_get_ts(struct mbtx_ref * const ref, const struct kref * const key, struct kv * const out);
+
+  extern bool
+mbtx_get_value_ts(struct mbtx_ref * const ref, const struct kref * key, void * const vbuf_out, u32 * const vlen_out);
+
+  extern bool
+mbtx_probe(struct mbtx_ref * const ref, const struct kref * const key);
+
+  extern bool
+mbtx_probe_ts(struct mbtx_ref * const ref, const struct kref * const key);
 
   extern bool
 mbtx_iter_valid(struct mbtx_iter * const iter);
@@ -165,6 +205,31 @@ mbtx_iter_park(struct mbtx_iter * const iter);
 
   extern void
 mbtx_iter_destroy(struct mbtx_iter * const iter);
+
+  extern void
+mbtx_stats(const struct mbt * const mbt, struct msst_stats * const stats);
+
+  extern struct mbt *
+mbtd_create_at(const int dfd);
+
+  extern void
+mbtd_destroy(struct mbt * const mbt);
+
+  extern void
+mbtd_drop_lazy(struct mbt * const mbt);
+
+  extern void
+mbtd_drop(struct mbt * const mbt);
+
+  extern struct mbt *
+dummy_build_at_reuse(const int dfd, struct rcache * const rc,
+               const u64 seq, const u32 nr_runs,
+               struct mbt * const y0, const u32 nr_reuse,
+               const bool gen_tags, const bool gen_dbits,
+               const bool inc_rebuild, const u8 * merge_hist, const u64 hist_size, u64 * ysz);
+
+  extern void
+mbtx_miter_major(struct mbt * const mbt, struct miter * const miter);
 // }}} mbtx
 
 // remix {{{
@@ -197,7 +262,7 @@ remix_build_at_reuse(const int dfd, struct rcache * const rc,
 mbty_miter_major(struct mbt * const mbty, struct miter * const miter);
 
   void
-mbty_miter_partial(struct mbt * const mbty, struct miter * const miter, const u32 bestrun);
+mbt_miter_partial(struct mbt * const mbty, struct miter * const miter, const u32 bestrun);
 
   extern void
 remix_destroy(struct remix * const remix);
@@ -225,9 +290,6 @@ mbty_open_y_at(const int dfd, struct mbt * const mbt);
   extern void
 mbt_add_refcnt(struct mbt * mbt);
 
-  extern void
-mbt_stats(const struct mbt * const mbt, struct msst_stats * const stats);
-
   extern u32
 mbty_nr_pages(struct mbt * const mbt);
 
@@ -241,7 +303,7 @@ mbty_destroy(struct mbt * const mbt);
 mbty_fprint(struct mbt * const mbt, FILE * const fout);
 
   extern void
-mbt_stats(const struct mbt * const mbt, struct msst_stats * const stats);
+mbty_stats(const struct mbt * const mbt, struct msst_stats * const stats);
 
   extern u32
 mbt_accu_nkv_at(const struct mbt * const mbt, const u32 i);
@@ -267,10 +329,10 @@ mbty_unref(struct mbty_ref * const ref);
   extern struct mbty_iter *
 mbty_iter_create(struct mbty_ref * const ref);
 
-  struct mbty_iter *
+  extern struct mbty_iter *
 mbty_iter_new();
 
-  void
+  extern void
 mbty_iter_init(struct mbty_iter * const iter, struct mbt * const mbt);
 
   extern bool
@@ -322,7 +384,7 @@ mbty_drop(struct mbt * const mbt);
 mbty_drop_lazy(struct mbt * const mbt);
 
   extern u64
-mbty_get_magic(const struct mbt * const mbt);
+mbt_get_magic(const struct mbt * const mbt);
 
 // ts iter: ignore a key if its newest version is a tombstone
   extern bool

@@ -1403,9 +1403,10 @@ blbf_log_metrics(const struct bt * bt, const bool predict, const bool result)
   }
 }
 
-  struct kv *
-bt_get(struct bt * const bt, const struct kref * const key, struct kv * const out)
+  static bool
+bt_iter_match(struct bt_iter * const iter, const struct kref * const key)
 {
+  struct bt * bt = iter->bt;
   if (bt->meta.nr_leaf == 0)
     return NULL;
 
@@ -1415,23 +1416,30 @@ bt_get(struct bt * const bt, const struct kref * const key, struct kv * const ou
     return NULL;
   }
 
-  struct bt_iter iter;
-  iter.bt = bt;
-  iter.nr_leaf = bt->meta.nr_leaf;
-  iter.ptr.pageid = bt_seek_pageid(bt, key);
-  iter.kvdata = NULL;
+  iter->nr_leaf = bt->meta.nr_leaf;
+  iter->ptr.pageid = bt_seek_pageid(bt, key);
+  iter->kvdata = NULL;
 
   // second way: check the bloom filter after we are in at a leaf node
   // save one I/O to the actual leaf block
-  const bool might_exist1 = blbf_lookup(bt, iter.ptr.pageid, key);
+  const bool might_exist1 = blbf_lookup(bt, iter->ptr.pageid, key);
   if (might_exist1 == false) {
     return NULL;
   }
 
-  const bool match = bt_page_seek_leaf(&iter, key);
+  const bool match = bt_page_seek_leaf(iter, key);
+  btbf_log_metrics(bt, might_exist, match);
+  blbf_log_metrics(bt, might_exist1, match);
+  return match;
+}
+
+  struct kv *
+bt_get(struct bt * const bt, const struct kref * const key, struct kv * const out)
+{
+  struct bt_iter iter;
+  iter.bt = bt;
+  const bool match = bt_iter_match(&iter, key);
   struct kv * const ret = match ? bt_iter_peek(&iter, out) : NULL;
-  btbf_log_metrics(bt, might_exist, ret != NULL);
-  blbf_log_metrics(bt, might_exist1, ret != NULL);
   bt_iter_park(&iter);
   return ret;
 }
@@ -1439,33 +1447,11 @@ bt_get(struct bt * const bt, const struct kref * const key, struct kv * const ou
   bool
 bt_probe(struct bt * const bt, const struct kref * const key)
 {
-  if (bt->meta.nr_leaf == 0)
-    return false;
-
-  // first way: check bloom filters before we go into the index
-  const bool might_exist = btbf_lookup(bt, key);
-  if (might_exist == false) {
-    return false;
-  }
-
   struct bt_iter iter;
   iter.bt = bt;
-  iter.nr_leaf = bt->meta.nr_leaf;
-  iter.ptr.pageid = bt_seek_pageid(bt, key);
-  iter.kvdata = NULL;
-
-  // second way: check the bloom filter after we are in at a leaf node
-  // save one I/O to the actual leaf block
-  const bool might_exist1 = blbf_lookup(bt, iter.ptr.pageid, key);
-  if (might_exist1 == false) {
-    return false;
-  }
-
-  const bool r = bt_page_seek_leaf(&iter, key);
-  btbf_log_metrics(bt, might_exist, r);
-  blbf_log_metrics(bt, might_exist1, r);
+  const bool match = bt_iter_match(&iter, key);
   bt_iter_park(&iter);
-  return r;
+  return match;
 }
 
   struct kv *
@@ -1516,7 +1502,10 @@ struct mbt {
   u64 seq;
   u32 nr_runs;
   u32 refcnt; // not atomic: -- in mbtz_gc(); ++ in append-to-v; no race condition
-  struct remix * remix; // optional
+  union {
+    struct remix * remix; // optional
+    struct dummy * dummy;
+  };
   // mbt is both x and y, if it has remix, it's y
   struct rcache * rc;
   struct bt bts[MSST_NR_RUNS];
@@ -1643,40 +1632,193 @@ mbtx_destroy(struct mbt * const mbt)
   free(mbt);
 }
 
-  struct mbtx_iter *
-mbtx_iter_create(struct mbt * const mbt)
+  void
+mbtx_drop(struct mbt * const mbt)
 {
-  struct mbtx_iter * const iter = calloc(1, sizeof(*iter));
-  if (iter == NULL)
-    return NULL;
+  if (mbt->refcnt == 1) {
+    mbtx_destroy(mbt);
+  } else {
+    mbt->refcnt--;
+  }
+}
 
+  void
+mbtx_drop_lazy(struct mbt * const mbt)
+{
+  if (mbt->refcnt == 1) {
+    mbtx_destroy_lazy(mbt);
+  } else {
+    mbt->refcnt--;
+  }
+}
+
+  void
+mbtx_fprint(struct mbt * const mbt, FILE * const fout)
+{
+  const u32 nr_runs = mbt->nr_runs;
+  fprintf(fout, "%s seq %lu nr_runs %u\n", __func__, mbt->seq, nr_runs);
+  for (u32 i = 0; i < nr_runs; i++)
+    bt_fprint(&(mbt->bts[i]), fout);
+}
+
+  static struct kv *
+mbtx_first_key(struct mbt * const mbt, struct kv * const out)
+{
+  if (mbt->nr_runs == 0) {
+    return NULL;
+  }
+
+  struct kv * const tmp = malloc(sizeof(*tmp) + SST_MAX_KVSZ);
+  struct kv * const min = bt_first_key(&(mbt->bts[0]), out);
+
+  for (u32 i = 0; i < mbt->nr_runs; i++) {
+    struct kv * const curr = bt_first_key(&(mbt->bts[i]), tmp);
+    if (kv_compare(curr, min) < 0) {
+      kv_dup2(curr, min);
+    }
+  }
+
+  free(tmp);
+  return min;
+}
+
+  static struct kv *
+mbtx_last_key(struct mbt * const mbt, struct kv * const out)
+{
+  if (mbt->nr_runs == 0) {
+    return NULL;
+  }
+
+  struct kv * const tmp = malloc(sizeof(*tmp) + SST_MAX_KVSZ);
+  struct kv * const max = bt_last_key(&(mbt->bts[0]), out);
+
+  for (u32 i = 0; i < mbt->nr_runs; i++) {
+    struct kv * const curr = bt_last_key(&(mbt->bts[i]), tmp);
+    if (kv_compare(curr, max) > 0) {
+      kv_dup2(curr, max);
+    }
+  }
+
+  free(tmp);
+  return max;
+}
+
+  struct mbtx_iter *
+mbtx_iter_create(struct mbtx_ref * const ref)
+{
+  return (struct mbtx_iter *)ref;
+}
+
+  struct mbtx_iter *
+mbtx_iter_new()
+{
+  struct mbtx_iter * const iter = malloc(sizeof(*iter));
+  return iter;
+}
+
+  void
+mbtx_iter_init(struct mbtx_iter * const iter, struct mbt * const mbt)
+{
   iter->mbt = mbt;
   iter->nr_runs = mbt->nr_runs;
   for (u32 i = 0; i < mbt->nr_runs; i++) {
     bt_iter_init(&(iter->iters[i]), &(mbt->bts[i]), (u8)i);
     iter->mh[i+1] = &(iter->iters[i]);
   }
-  return iter;
 }
 
-  struct kv *
-mbtx_get(struct mbt * const mbt, const struct kref * const key, struct kv * const out)
+  inline bool
+mbtx_iter_ts(struct mbtx_iter * const iter)
 {
+  struct bt_iter * bt_iter = iter->mh[1];
+  debug_assert(bt_iter_valid(bt_iter));
+  bt_iter_fix_kv(bt_iter);
+  return bt_iter->vlen == SST_VLEN_TS;
+}
+
+  static struct bt_iter *
+mbtx_iter_match(struct mbtx_iter * const iter, const struct kref * const key, const bool hide_ts)
+{
+  struct mbt * mbt = iter->mbt;
+
   for (u32 i = mbt->nr_runs-1; i < mbt->nr_runs; i--) {
-    struct kv * const ret = bt_get(&(mbt->bts[i]), key, out);
-    if (ret)
-      return ret;
+    struct bt_iter * bt_iter = &(iter->iters[i]);
+    const bool match = bt_iter_match(bt_iter, key);
+    if (match) {
+      if (hide_ts && bt_iter_ts(bt_iter)) {
+        return NULL;
+      }
+      return bt_iter;
+    }
   }
   return NULL;
 }
 
-  bool
-mbtx_probe(struct mbt * const mbt, const struct kref * const key)
+  static struct kv *
+mbtx_get_internal(struct mbtx_ref * const ref, const struct kref * const key,
+    struct kv * const out, const bool hide_ts)
 {
-  for (u32 i = mbt->nr_runs-1; i < mbt->nr_runs; i--)
-    if (bt_probe(&(mbt->bts[i]), key))
-      return true;
-  return false;
+  struct mbtx_iter * const iter = (typeof(iter))ref;
+  struct bt_iter * const iter1 = mbtx_iter_match(iter, key, hide_ts);
+  if (iter1) {
+    struct kv * const ret = bt_iter_peek(iter1, out);
+    mbtx_iter_park(iter);
+    return ret;
+  } else {
+    return NULL;
+  }
+}
+
+  struct kv *
+mbtx_get(struct mbtx_ref * const ref, const struct kref * const key, struct kv * const out)
+{
+  return mbtx_get_internal(ref, key, out, false);
+}
+
+  struct kv *
+mbtx_get_ts(struct mbtx_ref * const ref, const struct kref * const key, struct kv * const out)
+{
+  return mbtx_get_internal(ref, key, out, true);
+}
+
+  bool
+mbtx_get_value_ts(struct mbtx_ref * const ref, const struct kref * key, void * const vbuf_out, u32 * const vlen_out)
+{
+  struct mbtx_iter * const iter = (typeof(iter))ref;
+  struct bt_iter * const iter1 = mbtx_iter_match(iter, key, true);
+  if (iter1) {
+    memcpy(vbuf_out, iter1->kvdata + iter1->klen, iter1->vlen);
+    *vlen_out = iter1->vlen;
+    mbtx_iter_park(iter);
+    return true;
+  } else {
+    return false;
+  }
+}
+
+  static bool
+mbtx_probe_internal(struct mbtx_ref * const ref, const struct kref * const key, const bool hide_ts)
+{
+  struct mbtx_iter * const iter = (typeof(iter))ref;
+  struct bt_iter * const iter1 = mbtx_iter_match(iter, key, hide_ts);
+  if (iter1) {
+    mbtx_iter_park(iter);
+    return true;
+  } else {
+    return false;
+  }
+}
+
+  bool
+mbtx_probe(struct mbtx_ref * const ref, const struct kref * const key)
+{
+  return mbtx_probe_internal(ref, key, false);
+}
+
+  bool
+mbtx_probe_ts(struct mbtx_ref * const ref, const struct kref * const key)
+{
+  return mbtx_probe_internal(ref, key, true);
 }
 
 // mh {{{
@@ -1785,6 +1927,27 @@ mbtx_iter_seek_null(struct mbtx_iter * const iter)
     mbtx_mh_uphead(iter, i);
 }
 
+  struct mbtx_ref *
+mbtx_ref(struct mbt * const mbt)
+{
+  struct mbtx_iter * const iter = malloc(sizeof(*iter));
+  if (iter == NULL)
+    return NULL;
+
+  mbtx_iter_init(iter, mbt);
+  return (struct mbtx_ref *)iter;
+}
+
+  struct mbt *
+mbtx_unref(struct mbtx_ref * const ref)
+{
+  struct mbtx_iter * const iter = (typeof(iter))ref;
+  struct mbt * const mbt = iter->mbt;
+  mbtx_iter_park(iter);
+  free(iter);
+  return mbt;
+}
+
   struct kv *
 mbtx_iter_peek(struct mbtx_iter * const iter, struct kv * const out)
 {
@@ -1870,9 +2033,249 @@ mbtx_iter_park(struct mbtx_iter * const iter)
 mbtx_iter_destroy(struct mbtx_iter * const iter)
 {
   mbtx_iter_park(iter);
-  free(iter);
+}
+
+  void
+mbtx_stats(const struct mbt * const mbt, struct msst_stats * const stats)
+{
+  memset(stats, 0, sizeof(*stats));
+  for (u32 i = 0; i < mbt->nr_runs; i++) {
+    const struct bt * const bt = &(mbt->bts[i]);
+    stats->data_sz += (PGSZ * bt->meta.nr_leaf);
+    stats->meta_sz += sizeof(bt->meta);
+    stats->totkv += bt->meta.nr_kvs;
+    const struct btmeta * const meta = &bt->meta;
+    stats->totsz += (PGSZ * (meta->root + 1)) + meta->btbf_size + meta->blbf_size + sizeof(*meta);
+  }
+  stats->nr_runs = mbt->nr_runs;
+}
+
+  void
+mbtx_miter_major(struct mbt * const mbt, struct miter * const miter)
+{
+  miter_add(miter, &kvmap_api_mbtx, mbt);
 }
 // }}} mbtx
+
+// {{{ mbtx_dummy
+struct dummy {
+  struct kv * first_key;
+  struct kv * last_key;
+};
+
+  static struct dummy *
+dummy_open_at(const int dfd, const u64 seq, const u32 nr_runs)
+{
+  char fn[16];
+  const u64 magic = seq * 100lu + nr_runs;
+  sprintf(fn, "%03lu.dummy", magic);
+  const int fd = openat(dfd, fn, O_RDONLY);
+  if (fd < 0)
+    return NULL;
+
+  struct dummy * dummy = malloc(sizeof(*dummy));
+
+  const size_t fsize = fdsize(fd);
+  debug_assert(fsize >= (2 * sizeof(u32)));
+  debug_assert(fsize < 2 * (SST_MAX_KVSZ + sizeof(u32)));
+
+  void * const buff = malloc(fsize);
+  u64 bytes_read = pread(fd, buff, fsize, 0);
+  debug_assert(bytes_read >= (2 * sizeof(u32)));
+  debug_assert(bytes_read < (2 * (sizeof(u32) + SST_MAX_KVSZ)));
+
+  const u32 k0_len = *(u32*)(buff + fsize - (2 * sizeof(u32)));
+  debug_assert(k0_len < SST_MAX_KVSZ);
+  const u32 kz_len = *(u32*)(buff + fsize - sizeof(u32));
+  debug_assert(kz_len < SST_MAX_KVSZ);
+
+  struct kv * k0 = calloc(1, sizeof(*k0) + k0_len);
+  memcpy(k0->kv, buff, k0_len);
+  k0->klen = k0_len;
+
+  struct kv * kz = calloc(1, sizeof(*kz) + kz_len);
+  memcpy(kz->kv, buff + k0_len, kz_len);
+  kz->klen = kz_len;
+
+  dummy->first_key = k0;
+  dummy->last_key = kz;
+
+  free(buff);
+  return dummy;
+}
+
+  static bool
+mbtx_open_d_at(const int dfd, struct mbt * const mbt)
+{
+  debug_assert(mbt->dummy == NULL);
+  struct dummy * const dummy = dummy_open_at(dfd, mbt->seq, mbt->nr_runs);
+  mbt->dummy = dummy;
+  return dummy != NULL;
+}
+
+  static u32
+dummy_build_at(const int dfd, struct mbt * const x1)
+{
+  char fn[24];
+  const u64 magic = mbt_get_magic(x1);
+  sprintf(fn, "%03lu.dummy", magic);
+  const int fdout = openat(dfd, fn, O_WRONLY|O_CREAT|O_TRUNC, 00644);
+  if (fdout < 0)
+    return 0;
+
+  struct kv * k0 = mbtx_first_key(x1, NULL);
+  struct kv * kz = mbtx_last_key(x1, NULL);
+  const u32 k0_len = k0 ? k0->klen : 0;
+  const u32 kz_len = kz ? kz->klen : 0;
+
+  u32 bytes_written = 0;
+
+  if (k0) {
+    write(fdout, k0->kv, k0_len);
+    bytes_written += k0_len;
+  }
+  if (kz) {
+    write(fdout, kz->kv, kz_len);
+    bytes_written += kz_len;
+  }
+
+  write(fdout, &k0_len, sizeof(k0_len));
+  bytes_written += sizeof(k0_len);
+  write(fdout, &kz_len, sizeof(kz_len));
+  bytes_written += sizeof(kz_len);
+
+  fdatasync(fdout);
+  close(fdout);
+
+  free(k0);
+  free(kz);
+  return bytes_written;
+}
+
+  void
+dummy_destroy(struct dummy * const dummy)
+{
+  free(dummy->first_key);
+  free(dummy->last_key);
+  free(dummy);
+}
+
+  struct mbt *
+mbtd_create_at(const int dfd)
+{
+  struct mbt * mbt = mbtx_open_at(dfd, 0, 0);
+  if (mbt == NULL) {
+    return NULL;
+  }
+
+  if (dummy_build_at(dfd, mbt) == false) {
+    mbtx_destroy(mbt);
+    return NULL;
+  }
+
+  if (mbtx_open_d_at(dfd, mbt) == false) {
+    mbtx_destroy(mbt);
+    return NULL;
+  }
+
+  return mbt;
+}
+
+  static void
+mbtd_destroy_lazy(struct mbt * const mbt)
+{
+  dummy_destroy(mbt->dummy);
+  for (u32 i = 0; i < mbt->nr_runs; i++)
+    bt_deinit_lazy(&(mbt->bts[i]));
+  free(mbt);
+}
+
+  void
+mbtd_drop(struct mbt * const mbt)
+{
+  if (mbt->refcnt == 1) {
+    mbtd_destroy(mbt);
+  } else {
+    mbt->refcnt--;
+  }
+}
+
+  void
+mbtd_drop_lazy(struct mbt * const mbt)
+{
+  if (mbt->refcnt == 1) {
+    mbtd_destroy_lazy(mbt);
+  } else {
+    mbt->refcnt--;
+  }
+}
+
+  void
+mbtd_destroy(struct mbt * const mbt)
+{
+  dummy_destroy(mbt->dummy);
+  mbt->dummy = NULL;
+  mbtx_destroy(mbt);
+}
+
+  struct kv *
+mbtd_first_key(struct mbt * const mbt, struct kv * const out)
+{
+  debug_assert(mbt->dummy);
+  return kv_dup2(mbt->dummy->first_key, out);
+}
+
+  struct kv *
+mbtd_last_key(struct mbt * const mbt, struct kv * const out)
+{
+  debug_assert(mbt->dummy);
+  return kv_dup2(mbt->dummy->last_key, out);
+}
+
+  struct mbt *
+dummy_build_at_reuse(const int dfd, struct rcache * const rc,
+               const u64 seq, const u32 nr_runs,
+               struct mbt * const y0, const u32 nr_reuse,
+               const bool gen_tags, const bool gen_dbits,
+               const bool inc_rebuild, const u8 * merge_hist, const u64 hist_size,
+               u64 * ysz)
+{
+  (void)gen_tags;
+  (void)gen_dbits;
+  (void)inc_rebuild;
+  (void)merge_hist;
+  (void)hist_size;
+  struct mbt * mbt = mbtx_open_at_reuse(dfd, seq, nr_runs, y0, nr_reuse);
+
+  mbtx_rcache(mbt, rc);
+  u32 size = dummy_build_at(dfd, mbt);
+  if (size == 0) {
+    debug_die();
+  }
+  *ysz = size;
+
+  if (mbtx_open_d_at(dfd, mbt) == false) {
+    debug_die();
+  }
+
+  return mbt;
+}
+
+  struct mbt *
+mbtd_open_at(const int dfd, const u64 seq, const u32 nr_runs)
+{
+  struct mbt * const mbt = mbtx_open_at(dfd, seq, nr_runs);
+  if (mbt == NULL)
+    return NULL;
+
+  if (mbtx_open_d_at(dfd, mbt) == false) {
+    mbtx_destroy(mbt);
+    return NULL;
+  }
+
+  return mbt;
+}
+// }}}
 
 // remix {{{
 struct remixmeta {
@@ -2173,9 +2576,8 @@ mbty_drop(struct mbt * const mbt)
 }
 
   u64
-mbty_get_magic(const struct mbt * const mbt)
+mbt_get_magic(const struct mbt * const mbt)
 {
-  // TODO: should this be stored somewhere?
   const u64 magic = mbt->seq * 100lu + mbt->nr_runs;
   return magic;
 }
@@ -2229,30 +2631,6 @@ struct mbty_iter { // valid if seg_iter is valid
   struct bt_iter iters[MSST_NR_RUNS]; // iters to the runs
 };
 
-  void
-mbt_stats(const struct mbt * const mbt, struct msst_stats * const stats)
-{
-  memset(stats, 0, sizeof(*stats));
-  for (u32 i = 0; i < mbt->nr_runs; i++) {
-    const struct bt * const bt = &(mbt->bts[i]);
-    stats->data_sz += (PGSZ * bt->meta.nr_leaf);
-    stats->meta_sz += sizeof(bt->meta);
-    stats->totkv += bt->meta.nr_kvs;
-    const struct btmeta * const meta = &bt->meta;
-    stats->totsz += (PGSZ * (meta->root + 1)) + meta->btbf_size + meta->blbf_size + sizeof(*meta);
-  }
-  stats->nr_runs = mbt->nr_runs;
-  const struct remix * const remix = mbt->remix;
-  if (remix != NULL) {
-    debug_assert(mbt->nr_runs == remix->nr_runs);
-    // TODO: after we added fsize in meta and totsz in remix
-    // debug_assert(stats->totsz == remix->fsize);
-    stats->ssty_sz = remix->fsize;
-    // TODO: check valid count
-    stats->valid = remix->meta.stats[0].valid_kv_up;
-  }
-}
-
   u32
 mbt_accu_nkv_at(const struct mbt * const mbt, const u32 i)
 {
@@ -2280,6 +2658,30 @@ mbt_nr_pages_at(const struct mbt * const mbt, const u32 i)
     return 0;
   }
   return mbt->bts[i].meta.root + 1;
+}
+
+  void
+mbty_stats(const struct mbt * const mbt, struct msst_stats * const stats)
+{
+  memset(stats, 0, sizeof(*stats));
+  for (u32 i = 0; i < mbt->nr_runs; i++) {
+    const struct bt * const bt = &(mbt->bts[i]);
+    stats->data_sz += (PGSZ * bt->meta.nr_leaf);
+    stats->meta_sz += sizeof(bt->meta);
+    stats->totkv += bt->meta.nr_kvs;
+    const struct btmeta * const meta = &bt->meta;
+    stats->totsz += (PGSZ * (meta->root + 1)) + meta->btbf_size + meta->blbf_size + sizeof(*meta);
+  }
+  stats->nr_runs = mbt->nr_runs;
+  const struct remix * const remix = mbt->remix;
+  if (remix != NULL) {
+    debug_assert(mbt->nr_runs == remix->nr_runs);
+    // TODO: after we added fsize in meta and totsz in remix
+    // debug_assert(stats->totsz == remix->fsize);
+    stats->ssty_sz = remix->fsize;
+    // TODO: check valid count
+    stats->valid = remix->meta.stats[0].valid_kv_up;
+  }
 }
 
   void
@@ -2988,7 +3390,7 @@ mbty_get_value_ts(struct mbty_ref * const ref, const struct kref * key,
   if (iter1) {
     memcpy(vbuf_out, iter1->kvdata + iter1->klen, iter1->vlen);
     *vlen_out = iter1->vlen;
-    bt_iter_park(iter1);
+    mbty_iter_park(iter);
     return true;
   } else {
     return false;
@@ -5022,7 +5424,8 @@ remix_build_at_reuse(const int dfd, struct rcache * const rc,
                const u64 seq, const u32 nr_runs,
                struct mbt * const y0, const u32 nr_reuse,
                const bool gen_tags, const bool gen_dbits,
-               const bool inc_rebuild, const u8 * merge_hist, const u64 hist_size, u64 * ysz)
+               const bool inc_rebuild, const u8 * merge_hist, const u64 hist_size,
+               u64 * ysz)
 {
   struct mbt * mbt = mbtx_open_at_reuse(dfd, seq, nr_runs, y0, nr_reuse);
   mbty_rcache(mbt, rc);
@@ -5047,17 +5450,17 @@ mbty_miter_major(struct mbt * const mbty, struct miter * const miter)
 }
 
   void
-mbty_miter_partial(struct mbt * const mbty, struct miter * const miter, const u32 bestrun)
+mbt_miter_partial(struct mbt * const mbt, struct miter * const miter, const u32 bestrun)
 {
-  const u32 nrun0 = mbty->nr_runs;
+  const u32 nrun0 = mbt->nr_runs;
   for (u32 w = bestrun; w < nrun0; w++)
-    miter_add(miter, &kvmap_api_bt, &(mbty->bts[w]));
+    miter_add(miter, &kvmap_api_bt, &(mbt->bts[w]));
 }
 
   u64
 mbty_comp_est_remix(const u64 nkeys, const float run)
 {
-  // TODO: estimate should consider whether each feather is enabled
+  // TODO: estimate should consider whether each feature is enabled
   // use the same policy as the sst for now
   // const u64 nsecs = nkeys / FLUSH_THRE_SEGMENT_NKEYS;
   // return (sizeof(struct bt_ptr) * (u64)ceilf(run) + 16) * nsecs + nkeys * 5;
@@ -5113,7 +5516,10 @@ const struct kvmap_api kvmap_api_mbtx = {
   .iter_next = (void *)mbtx_iter_next,
   .iter_park = (void *)mbtx_iter_park,
   .iter_destroy = (void *)mbtx_iter_destroy,
+  .ref = (void *)mbtx_ref,
+  .unref = (void *)mbtx_unref,
   .destroy = (void *)mbtx_destroy,
+  .fprint = (void *)mbtx_fprint,
 };
 
 // mbty (no-suffix) iterator: hide stale version, show tombstones

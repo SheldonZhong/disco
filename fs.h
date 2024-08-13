@@ -198,6 +198,7 @@ struct fs_api {
 
 extern const struct fs_api sst_fs;
 extern const struct fs_api bt_fs;
+extern const struct fs_api bt_dummy_fs;
 
   const struct fs_api *
 get_fs(const char * name);
