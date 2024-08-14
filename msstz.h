@@ -8,7 +8,7 @@ struct msstz;
 
 // use cfg=NULL for default cfg
   extern struct msstz *
-msstz_open(const char * const dirname, const u64 cache_size_mb, const struct msstz_cfg * const cfg);
+msstz_open(const char * const dirname, const struct msstz_cfg * const cfg);
 
   extern void
 msstz_destroy(struct msstz * const z);

@@ -27,7 +27,17 @@
 #define SSTY_INVALID   ((0xffu))
 // }}} define
 
+struct xdb_cfg {
+  size_t mt_size_mb;
+  size_t wal_size_mb;
+  u32 nr_workers;
+  u32 co_per_worker;
+  char * worker_cores;
+  const struct msstz_cfg * z_cfg;
+};
+
 struct msstz_cfg {
+  size_t cache_size_mb;
   u32 major_switch; // 1 or 2
   u32 major_trigger; // <16
   u32 estimate_safe; // to avoid overflow
@@ -64,7 +74,8 @@ struct t_build_cfg {
   bool leaf_bloom;
 };
 
-extern const struct msstz_cfg msstz_cfg_default;
+extern struct msstz_cfg msstz_cfg_default;
+extern struct xdb_cfg xdb_cfg_default;
 
 // mm {{{
 extern const struct kvmap_mm kvmap_mm_ts;

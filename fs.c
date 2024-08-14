@@ -137,6 +137,9 @@ get_fs(const char * name)
   if (strcmp(name, "bt") == 0) {
     return &bt_fs;
   }
+  if (strcmp(name, "dummy") == 0) {
+    return &bt_dummy_fs;
+  }
   return NULL;
 }
 

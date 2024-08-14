@@ -2,7 +2,8 @@
 
 #include "common.h"
 
-const struct msstz_cfg msstz_cfg_default = {
+struct msstz_cfg msstz_cfg_default = {
+  .cache_size_mb = 0,
   .major_switch = 2,
   .major_trigger = 8,
   .estimate_safe = 14,
@@ -13,7 +14,16 @@ const struct msstz_cfg msstz_cfg_default = {
   .bt_bloom = false,
   .leaf_bloom = false,
   .dbits = true,
-  .inc_rebuild = true,
+  .inc_rebuild = false,
+};
+
+struct xdb_cfg xdb_cfg_default = {
+  .mt_size_mb = 4096,
+  .wal_size_mb = 8192, // auto mt_size_mb << 1
+  .nr_workers = 4, // auto 4
+  .co_per_worker = 4, // ckeys == false
+  .worker_cores = "auto",
+  .z_cfg = &msstz_cfg_default,
 };
 
 // mm {{{

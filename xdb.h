@@ -19,8 +19,7 @@ struct xdb_iter;
 
 // xdb {{{
   extern struct xdb *
-xdb_open(const char * const dir, const size_t cache_size_mb, const size_t mt_size_mb, const size_t wal_size_mb,
-    const struct msstz_cfg * const zc, const u32 nr_workers, const u32 co_per_worker, const char * const worker_cores);
+xdb_open(const char * const dir, const struct xdb_cfg * cfg);
 
   extern void
 xdb_close(struct xdb * const xdb);
@@ -97,10 +96,10 @@ extern const struct kvmap_api kvmap_api_xdb;
 
 // remixdb {{{
   extern struct xdb *
-remixdb_open(const char * const dir, const size_t cache_size_mb, const size_t mt_size_mb, const bool tags);
+remixdb_open(const char * const dir);
 
   extern struct xdb *
-remixdb_open_compact(const char * const dir, const size_t cache_size_mb, const size_t mt_size_mb);
+remixdb_open_compact(const char * const dir);
 
   extern struct xdb_ref *
 remixdb_ref(struct xdb * const xdb);

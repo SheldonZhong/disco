@@ -847,8 +847,7 @@ logger_open(const char * const dirname)
 
 // open close {{{
   struct xdb *
-xdb_open(const char * const dir, const size_t cache_size_mb, const size_t mt_size_mb, const size_t wal_size_mb,
-    const struct msstz_cfg * const zc, const u32 nr_workers, const u32 co_per_worker, const char * const worker_cores)
+xdb_open(const char * const dir, const struct xdb_cfg * cfg)
 {
   mkdir(dir, 00755);
   struct xdb * const xdb = yalloc(sizeof(*xdb));
@@ -872,22 +871,22 @@ xdb_open(const char * const dir, const size_t cache_size_mb, const size_t mt_siz
   xdb->logfd = logger_open(dir);
   logger_init(xdb->logfd);
 
-  xdb->z = msstz_open(dir, cache_size_mb, zc);
+  xdb->z = msstz_open(dir, cfg->z_cfg);
   xdb->qsbr = qsbr_create();
 
   // just a warning
-  if ((mt_size_mb * 2) > wal_size_mb)
+  if ((cfg->mt_size_mb * 2) > cfg->wal_size_mb)
     fprintf(stderr, "%s wal_size < mt_size*2\n", __func__);
 
   // sz
-  xdb->max_mtsz = mt_size_mb << 20;
-  xdb->wal.maxsz = wal_size_mb << 20;
+  xdb->max_mtsz = cfg->mt_size_mb << 20;
+  xdb->wal.maxsz = cfg->wal_size_mb << 20;
   xdb->max_rejsz = xdb->max_mtsz >> XDB_REJECT_SIZE_SHIFT;
 
   spinlock_init(&xdb->lock);
-  xdb->nr_workers = nr_workers; // internal parallelism
-  xdb->co_per_worker = co_per_worker;
-  xdb->worker_cores = strdup(worker_cores);
+  xdb->nr_workers = cfg->nr_workers; // internal parallelism
+  xdb->co_per_worker = cfg->co_per_worker;
+  xdb->worker_cores = strdup(cfg->worker_cores);
   xdb->running = true;
 
   const bool wal_ok = wal_open(&xdb->wal, dir);
@@ -1383,37 +1382,24 @@ const struct kvmap_api kvmap_api_xdb = {
 xdb_kvmap_api_create(const char * const name, const struct kvmap_mm * const mm, char ** const args)
 {
   (void)mm;
-  if (!strcmp(name, "xdb")) {
-    const char * const dir = args[0];
-    const size_t cache_size_mb = a2u64(args[1]);
-    const size_t mt_size_mb = a2u64(args[2]);
-    const size_t wal_size_mb = (strcmp(args[3], "auto") == 0) ? (mt_size_mb << 1) : a2u64(args[3]);
-    const bool ckeys = args[4][0] != '0';
-    const bool tags = args[5][0] != '0';
-    const bool dbits = args[6][0] != '0';
-    const bool inc_rebuild = args[7][0] != '0';
-    const u32 nr_workers = (strcmp(args[8], "auto") == 0) ? 4 : a2u32(args[8]);
-    const u32 co_per_worker = (strcmp(args[9], "auto") == 0) ? (ckeys ? 1 : 4) : a2u32(args[9]);
-    const char * const worker_cores = args[10];
-    struct msstz_cfg zc = msstz_cfg_default;
-    zc.ckeys = ckeys;
-    zc.tags = tags;
-    zc.dbits = dbits;
-    zc.inc_rebuild = inc_rebuild;
-    return xdb_open(dir, cache_size_mb, mt_size_mb, wal_size_mb, &zc, nr_workers, co_per_worker, worker_cores);
-  } else if (!strcmp(name, "xdbauto")) {
-    const char * const dir = args[0];
-    const size_t cache_size_mb = a2u64(args[1]);
-    const size_t mt_size_mb = a2u64(args[2]);
-    const bool tags = args[3][0] != '0';
-    const bool dbits = args[4][0] != '0';
-    const bool inc_rebuild = args[5][0] != '0';
-    struct msstz_cfg zc = msstz_cfg_default;
-    zc.tags = tags;
-    zc.dbits = dbits;
-    zc.inc_rebuild = inc_rebuild;
-    return xdb_open(dir, cache_size_mb, mt_size_mb, mt_size_mb << 1, &zc, 4, 1, "auto");
+  const char * const dir = args[0];
+
+  if (!strcmp(name, "remixdb")) {
+    msstz_cfg_default.dbits = false;
+    return xdb_open(dir, &xdb_cfg_default);
   }
+
+  if (!strcmp(name, "discodb")) {
+    msstz_cfg_default.dbits = true;
+    return xdb_open(dir, &xdb_cfg_default);
+  }
+
+  if (!strcmp(name, "dummy")) {
+    msstz_cfg_default.dbits = false;
+    set_fs("dummy");
+    return xdb_open(dir, &xdb_cfg_default);
+  }
+
   return NULL;
 }
 
@@ -1421,13 +1407,9 @@ __attribute__((constructor))
   static void
 xdb_kvmap_api_init(void)
 {
-  kvmap_api_register(11, "xdb", "<path> <cache-mb> <mt-mb> <wal-mb/auto> "
-      "<ckeys(0/1)> <tags(0/1)> <dbits(0/1)> <inc_rebuild(0/1)>"
-      " <nr-workers/auto> <co-per-worker/auto> <worker-cores/auto/dont>",
-      xdb_kvmap_api_create, &kvmap_api_xdb);
-
-  kvmap_api_register(6, "xdbauto", "<path> <cache-mb> <mt-mb> <tags(0/1)> <dbits(0/1)> <inc_rebuild(0/1)>",
-      xdb_kvmap_api_create, &kvmap_api_xdb);
+  kvmap_api_register(1, "remixdb", "<path>", xdb_kvmap_api_create, &kvmap_api_xdb);
+  kvmap_api_register(1, "discodb", "<path>", xdb_kvmap_api_create, &kvmap_api_xdb);
+  kvmap_api_register(1, "dummy", "<path>", xdb_kvmap_api_create, &kvmap_api_xdb);
 }
 // }}}
 
@@ -1435,11 +1417,9 @@ xdb_kvmap_api_init(void)
 // The default: generate ckeys and tags: fast but consumes slightly more memory/disk space
 // use xdb_open for more options
   struct xdb *
-remixdb_open(const char * const dir, const size_t cache_size_mb, const size_t mt_size_mb, const bool tags)
+remixdb_open(const char * const dir)
 {
-  struct msstz_cfg zc = msstz_cfg_default;
-  zc.tags = tags;
-  return xdb_open(dir, cache_size_mb, mt_size_mb, mt_size_mb << 1, &zc, 4, 1, "auto");
+  return xdb_open(dir, &xdb_cfg_default);
 }
 
 // This mode provides SLIGHTLY lower WA and lower disk usage;
@@ -1447,12 +1427,11 @@ remixdb_open(const char * const dir, const size_t cache_size_mb, const size_t mt
 // hash-tags are also disabled so point queries will be much slower
 // You should use this mode only when the disk space is REALLY limited
   struct xdb *
-remixdb_open_compact(const char * const dir, const size_t cache_size_mb, const size_t mt_size_mb)
+remixdb_open_compact(const char * const dir)
 {
-  struct msstz_cfg zc = msstz_cfg_default;
-  zc.ckeys = false;
-  zc.tags = false;
-  return xdb_open(dir, cache_size_mb, mt_size_mb, mt_size_mb << 1, &zc, 4, 4, "auto");
+  msstz_cfg_default.ckeys = false;
+  msstz_cfg_default.tags = false;
+  return xdb_open(dir, &xdb_cfg_default);
 }
 
   struct xdb_ref *

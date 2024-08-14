@@ -7,7 +7,10 @@ struct msstv;
 struct msstv_iter;
 struct msstv_ref;
 
-extern const struct fs_api * const vzfs;
+extern const struct fs_api * vzfs;
+
+  extern void
+set_fs(const char * name);
 
   extern struct msstv *
 msstv_create(const u64 nslots, const u64 version);

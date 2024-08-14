@@ -38,7 +38,7 @@ msstz_head_sync(const int dfd, const u64 version)
 }
 
   struct msstz *
-msstz_open(const char * const dirname, const u64 cache_size_mb, const struct msstz_cfg * const cfg)
+msstz_open(const char * const dirname, const struct msstz_cfg * const cfg)
 {
   // get the dir
   int dfd = open(dirname, O_RDONLY | O_DIRECTORY);
@@ -69,8 +69,8 @@ msstz_open(const char * const dirname, const u64 cache_size_mb, const struct mss
   struct msstz * const z = yalloc(sizeof(*z));
   debug_assert(z);
   memset(z, 0, sizeof(*z));
-  if (cache_size_mb)
-    z->rc = rcache_create(cache_size_mb, 16);
+  if (cfg->cache_size_mb)
+    z->rc = rcache_create(cfg->cache_size_mb, 16);
 
   z->seq = seq0;
   z->hv = hv;
@@ -87,7 +87,8 @@ msstz_open(const char * const dirname, const u64 cache_size_mb, const struct mss
   rwlock_init(&(z->head_lock));
   char ts[64];
   time_stamp(ts, 64);
-  logger_printf("%s time %s v %lu seq %lu cache %lu\n", __func__, ts, msstz_version(z), seq0, cache_size_mb);
+  logger_printf("%s time %s v %lu seq %lu cache %lu\n", __func__,
+      ts, msstz_version(z), seq0, cfg->cache_size_mb);
 
   /*
   for (u64 i = 0; i < hv->nr; i++) {

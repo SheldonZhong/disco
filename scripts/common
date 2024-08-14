@@ -103,21 +103,14 @@ set_args()
   version="$(git rev-parse --short HEAD)"
 
   case $1 in
-  xdb-full)
-    #          dir,              cache-mb  mt_size, wal_size, ckeys, tags, dbits, inc_rebuild, nr_workers, co_per_worker, worker_cores
-    sys=('xdb' "$basedir/xdb-full" '0'     '4096'     'auto'    '0'    '0'      '0'     '0'         'auto'    'auto'           'auto')
+  remixdb)
+    sys=('remixdb' "$basedir/remixdb")
     ;;
-  xdb-inc)
-    #          dir,               cache-mb  mt_size, wal_size, ckeys, tags, dbits, inc_rebuild, nr_workers, co_per_worker, worker_cores
-    sys=('xdb' "$basedir/xdb-inc" '0'     '4096'     'auto'    '0'    '0'      '0'     '1'         'auto'    'auto'           'auto')
+  discodb)
+    sys=('discodb' "$basedir/discodb")
     ;;
-  xdb-inc-dbits)
-    #          dir,                    cache-mb  mt_size, wal_size, ckeys, tags, dbits, inc_rebuild, nr_workers, co_per_worker, worker_cores
-    sys=('xdb' "$basedir/xdb-inc-dbits" '0'     '4096'     'auto'    '0'    '0'      '1'     '1'         '1'    '0'           'auto')
-    ;;
-  xdb-dbits)
-    #          dir,                    cache-mb  mt_size, wal_size, ckeys, tags, dbits, inc_rebuild, nr_workers, co_per_worker, worker_cores
-    sys=('xdb' "$basedir/xdb-dbits"     '0'     '4096'     'auto'    '0'    '0'      '1'     '0'         'auto'    'auto'           'auto')
+  dummy)
+    sys=('dummy' "$basedir/dummy")
     ;;
   rdb-rw)
     sys=('rdb' "$basedir/rdb" '1')
@@ -126,7 +119,7 @@ set_args()
     sys=('rdb' "$basedir/rdb" '0')
     ;;
   *)
-    echo "sys: xdb-full xdb-dbits rdb-rw rdb-ro"
+    echo "sys: remixdb discodb rdb-rw rdb-ro"
     exit 0
     ;;
   esac
@@ -135,11 +128,11 @@ set_args()
 make_executables()
 {
   case ${db} in
-    xdb*)
-      make -B REMIXDB=y dbtest1.out ycsbtest.out
-      ;;
     rdb*)
       make -B ROCKSDB=y dbtest1.out ycsbtest.out
+      ;;
+    *)
+      make -B dbtest1.out ycsbtest.out
       ;;
   esac
 }

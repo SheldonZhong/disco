@@ -18,7 +18,7 @@ SOURCES += $(EXTRASRC)
 ASSMBLY +=
 ASSMBLY += $(EXTRAASM)
 # X => X.c X.h
-MODULES += lib kv wh pkeys logger
+MODULES += lib kv wh pkeys logger blkio sst xdb bt common msstv msstz fs
 MODULES += $(EXTRAMOD)
 # X => X.h
 HEADERS += ctypes
@@ -42,9 +42,6 @@ all : bin bench
 
 FLG-msstio.out += -DRCACHE_TRACE
 
-MOD-REMIX = blkio sst xdb bt common msstv msstz fs
-MOD-msstio.out += $(MOD-REMIX)
-
 #### bench
 TGT-bench += dbtest1 ycsbtest
 .PHONY : bench
@@ -59,9 +56,6 @@ LIB += papi
 FLG += -DPAPI
 endif
 # DB
-ifeq ($(REMIXDB),y)
-MODULES += $(MOD-REMIX)
-endif
 ifeq ($(RCACHE_TRACE),y)
 FLG += -DRCACHE_TRACE
 endif
