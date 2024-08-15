@@ -2035,6 +2035,11 @@ mbtx_iter_destroy(struct mbtx_iter * const iter)
   mbtx_iter_park(iter);
 }
 
+struct dummy {
+  struct kv * first_key;
+  struct kv * last_key;
+};
+
   void
 mbtx_stats(const struct mbt * const mbt, struct msst_stats * const stats)
 {
@@ -2048,6 +2053,17 @@ mbtx_stats(const struct mbt * const mbt, struct msst_stats * const stats)
     stats->totsz += (PGSZ * (meta->root + 1)) + meta->btbf_size + meta->blbf_size + sizeof(*meta);
   }
   stats->nr_runs = mbt->nr_runs;
+  stats->valid = stats->totkv;
+  struct dummy * dummy = mbt->dummy;
+  stats->ssty_sz = 0;
+  if (dummy != NULL) {
+    if (dummy->first_key) {
+      stats->ssty_sz += (dummy->first_key->klen + sizeof(u32));
+    }
+    if (dummy->last_key) {
+      stats->ssty_sz += (dummy->last_key->klen + sizeof(u32));
+    }
+  }
 }
 
   void
@@ -2058,11 +2074,6 @@ mbtx_miter_major(struct mbt * const mbt, struct miter * const miter)
 // }}} mbtx
 
 // {{{ mbtx_dummy
-struct dummy {
-  struct kv * first_key;
-  struct kv * last_key;
-};
-
   static struct dummy *
 dummy_open_at(const int dfd, const u64 seq, const u32 nr_runs)
 {
