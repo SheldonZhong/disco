@@ -180,9 +180,7 @@ struct fs_api {
   void (* y_iter_seek_null) (void * const y_iter);
   void * (* y_create_at) (const int dfd);
   void * (* y_build_at_reuse) (const int dfd, struct rcache * const rc,
-    const u64 seq, const u32 nr_runs, void * const mssty0,
-    const u32 run0, const bool gen_tags, const bool gen_dbits,
-    const bool inc_rebuild, const u8 * merge_hist, const u64 hist_size, u64 * ysz);
+    struct msstz_ytask * task, struct msstz_cfg * zcfg, u64 * ysz);
   void (* mt_stats) (const void * const msst, struct msst_stats * const stats);
   u64 (* t_build_at) (const int dfd, struct miter * const miter, const struct t_build_cfg * const cfg,
     const struct kv * const k0, const struct kv * const kz);

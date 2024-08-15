@@ -390,9 +390,7 @@ ssty_build_at(const int dfd, struct msst * const msstx1,
 
   extern struct msst *
 ssty_build_at_reuse(const int dfd, struct rcache * const rc,
-    const u64 seq, const u32 nr_runs, struct msst * const mssty0,
-    const u32 run0, const bool gen_tags, const bool gen_dbits,
-    const bool inc_rebuild, const u8 * merge_list, const u64 hist_size, u64 * ysz);
+    struct msstz_ytask * task, struct msstz_cfg * zcfg, u64 * ysz);
 
   extern void
 mssty_miter_major(struct msst * const msst, struct miter * const miter);

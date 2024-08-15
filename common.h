@@ -51,6 +51,20 @@ struct msstz_cfg {
   bool inc_rebuild;
 };
 
+struct msstz_ytask {
+  void * y1; // output; the new mssty; NULL when not done
+  void * y0; // old mssty
+  u64 seq1; // new seq // 0 if rejected
+  u32 run1; // new run
+  u32 run0; // how many tables to reuse from y0
+  u64 ipart;
+  u8 * t_build_history;
+  u64 hist_size;
+  u64 isub; // index of new partitions generated from an old partition
+  const struct kv * anchor; // provide anchor key (isub == 0) or NULL (isub > 0)
+  char comp_str[8];
+};
+
 // TODO: rename this
 struct msst_stats {
   u64 ssty_sz;

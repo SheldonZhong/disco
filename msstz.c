@@ -234,19 +234,7 @@ struct msstz_yq {
   au64 cseq; // consumer seq
   spinlock lock;
   u32 padding;
-  struct msstz_ytask {
-    void * y1; // output; the new mssty; NULL when not done
-    void * y0; // old mssty
-    u64 seq1; // new seq // 0 if rejected
-    u32 run1; // new run
-    u32 run0; // how many tables to reuse from y0
-    u64 ipart;
-    u8 * t_build_history;
-    u64 hist_size;
-    u64 isub; // index of new partitions generated from an old partition
-    const struct kv * anchor; // provide anchor key (isub == 0) or NULL (isub > 0)
-    char comp_str[8];
-  } tasks[0];
+  struct msstz_ytask tasks[0];
 };
 
 // global compaction information
@@ -346,8 +334,7 @@ msstz_yq_consume(struct msstz_comp_info * const ci)
   // open a msstx and call ssty_build
   const u64 t0 = time_nsec();
   u64 ysz = 0;
-  void * const msst = vzfs->y_build_at_reuse(z->dfd, z->rc, task->seq1, task->run1, task->y0, task->run0,
-      z->cfg.tags, z->cfg.dbits, z->cfg.inc_rebuild, task->t_build_history, task->hist_size, &ysz);
+  void * const msst = vzfs->y_build_at_reuse(z->dfd, z->rc, task, &z->cfg, &ysz);
   ci->stat_writes += ysz;
 
   task->y1 = msst; // done; the new partition is now loaded and ready to use

@@ -2234,18 +2234,11 @@ mbtd_last_key(struct mbt * const mbt, struct kv * const out)
 
   struct mbt *
 dummy_build_at_reuse(const int dfd, struct rcache * const rc,
-               const u64 seq, const u32 nr_runs,
-               struct mbt * const y0, const u32 nr_reuse,
-               const bool gen_tags, const bool gen_dbits,
-               const bool inc_rebuild, const u8 * merge_hist, const u64 hist_size,
-               u64 * ysz)
+    struct msstz_ytask * task, struct msstz_cfg * zcfg, u64 * ysz)
 {
-  (void)gen_tags;
-  (void)gen_dbits;
-  (void)inc_rebuild;
-  (void)merge_hist;
-  (void)hist_size;
-  struct mbt * mbt = mbtx_open_at_reuse(dfd, seq, nr_runs, y0, nr_reuse);
+  (void)zcfg;
+  struct mbt * mbt = mbtx_open_at_reuse(dfd, task->seq1, task->run1,
+      task->y0, task->run0);
 
   mbtx_rcache(mbt, rc);
   u32 size = dummy_build_at(dfd, mbt);
@@ -5421,16 +5414,14 @@ remix_build(const char * const dirname, struct mbt * const x1,
 
   struct mbt *
 remix_build_at_reuse(const int dfd, struct rcache * const rc,
-               const u64 seq, const u32 nr_runs,
-               struct mbt * const y0, const u32 nr_reuse,
-               const bool gen_tags, const bool gen_dbits,
-               const bool inc_rebuild, const u8 * merge_hist, const u64 hist_size,
-               u64 * ysz)
+    struct msstz_ytask * task, struct msstz_cfg * zcfg, u64 * ysz)
 {
-  struct mbt * mbt = mbtx_open_at_reuse(dfd, seq, nr_runs, y0, nr_reuse);
+  struct mbt * mbt = mbtx_open_at_reuse(dfd, task->seq1, task->run1, task->y0, task->run0);
   mbty_rcache(mbt, rc);
 
-  u32 ysize = remix_build_at(dfd, mbt, seq, nr_runs, y0, nr_reuse, gen_tags, gen_dbits, inc_rebuild, merge_hist, hist_size);
+  u32 ysize = remix_build_at(dfd, mbt, task->seq1, task->run1,
+      task->y0, task->run0, zcfg->tags, zcfg->dbits, zcfg->inc_rebuild,
+      task->t_build_history, task->hist_size);
   if (ysize == 0) {
     debug_die();
   }
