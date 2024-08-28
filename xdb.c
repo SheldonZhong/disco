@@ -1400,6 +1400,12 @@ xdb_kvmap_api_create(const char * const name, const struct kvmap_mm * const mm, 
     return xdb_open(dir, &xdb_cfg_default);
   }
 
+  if (!strcmp(name, "full")) {
+    msstz_cfg_default.dbits = false;
+    set_fs("full");
+    return xdb_open(dir, &xdb_cfg_default);
+  }
+
   return NULL;
 }
 
@@ -1410,6 +1416,7 @@ xdb_kvmap_api_init(void)
   kvmap_api_register(1, "remixdb", "<path>", xdb_kvmap_api_create, &kvmap_api_xdb);
   kvmap_api_register(1, "discodb", "<path>", xdb_kvmap_api_create, &kvmap_api_xdb);
   kvmap_api_register(1, "dummy", "<path>", xdb_kvmap_api_create, &kvmap_api_xdb);
+  kvmap_api_register(1, "full", "<path>", xdb_kvmap_api_create, &kvmap_api_xdb);
 }
 // }}}
 

@@ -128,6 +128,48 @@ const struct fs_api bt_dummy_fs = {
   .y_suffix = ".dummy",
 };
 
+const struct fs_api full_fs = {
+  .mt_rcache = (void *)mbtf_rcache,
+  .y_open_at = (void *)mbtf_open_at,
+  .y_destroy = (void *)mbtf_destroy,
+  .y_first_key = (void *)mbtf_first_key,
+  .y_last_key = (void *)mbtf_last_key,
+  .mt_add_refcnt = (void *)mbt_add_refcnt,
+  .y_drop_lazy = (void *)mbtf_drop_lazy,
+  .y_drop = (void *)mbtf_drop,
+  .y_get_magic = (void *)mbt_get_magic,
+  .y_iter_new = (void *)mbtf_iter_new,
+  .y_iter_valid = (void *)mbtf_iter_valid,
+  .y_get = (void *)mbtf_get,
+  .y_get_ts = (void *)mbtf_get_ts,
+  .y_get_value_ts = (void *)mbtf_get_value_ts,
+  .y_probe = (void *)mbtf_probe,
+  .y_probe_ts = (void *)mbtf_probe_ts,
+  .y_iter_init = (void *)mbtf_iter_init,
+  .y_iter_park = (void *)mbtf_iter_park,
+  .y_iter_seek = (void *)mbtf_iter_seek,
+  .y_iter_peek = (void *)mbtf_iter_peek,
+  .y_iter_kref = (void *)mbtf_iter_kref,
+  .y_iter_kvref = (void *)mbtf_iter_kvref,
+  .y_iter_retain = (void *)mbtf_iter_retain,
+  .y_iter_skip1 = (void *)mbtf_iter_skip1,
+  .y_fprint = (void *)mbtf_fprint,
+  .y_iter_ts = (void *)mbtf_iter_ts,
+  .y_iter_seek_null = (void *)mbtf_iter_seek_null,
+  .y_create_at = (void *)mbtf_create_at,
+  .y_build_at_reuse = (void *)findex_build_at_reuse,
+  .mt_stats = (void *)mbtf_stats,
+  .t_build_at = (void *)bt_build_at,
+  .mt_accu_nkv_at = (void *)mbt_accu_nkv_at,
+  .y_comp_est_y = mbty_comp_est_remix,
+  .mt_nkv_at = (void *)mbt_nkv_at,
+  .mt_nr_pages_at = (void *)mbt_nr_pages_at,
+  .y_miter_major = (void *)mbtf_miter_major,
+  .y_miter_partial = (void *)mbt_miter_partial,
+  .x_suffix = ".btx",
+  .y_suffix = ".findex",
+};
+
   const struct fs_api *
 get_fs(const char * name)
 {
@@ -139,6 +181,9 @@ get_fs(const char * name)
   }
   if (strcmp(name, "dummy") == 0) {
     return &bt_dummy_fs;
+  }
+  if (strcmp(name, "full") == 0) {
+    return &full_fs;
   }
   return NULL;
 }

@@ -112,6 +112,9 @@ set_args()
   dummy)
     sys=('dummy' "$basedir/dummy")
     ;;
+  full)
+    sys=('full' "$basedir/full")
+    ;;
   rdb-rw)
     sys=('rdb' "$basedir/rdb" '1')
     ;;

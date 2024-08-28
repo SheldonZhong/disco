@@ -1,7 +1,6 @@
 #define _GNU_SOURCE
 
 #include "lib.h"
-#include "ctypes.h"
 #include "kv.h"
 #include "pkeys.h"
 #include "bt.h"
@@ -133,8 +132,8 @@ struct btenc {
 
 // all-zero for an empty B+-tree;
 struct btmeta { // BT_PGSZ defined in sst.c
-  u16 depth; // == number of non-leaf levels
-  u16 nr_leaf; // valid pageid < nr_leaf; no valid page when nr_leaf == root == 0
+  u32 depth; // == number of non-leaf levels
+  u32 nr_leaf; // valid pageid < nr_leaf; no valid page when nr_leaf == root == 0
   u32 root; // root page id, which is nr_pages-1
   u32 nr_kvs; // number of all kvs including tombstones
   u32 root_size; // the size of the root node; may be cached and pinned separately
@@ -181,9 +180,8 @@ btenc_acquire_buffer(struct btenc * const enc)
 }
 
   static struct btenc *
-btenc_create(const int fd, const u16 max_leaf_pages)
+btenc_create(const int fd, const u32 max_leaf_pages)
 {
-  debug_assert(max_leaf_pages <= SST_MAX_PAGEID);
   struct btenc * const enc = calloc(1, sizeof(*enc));
   if (enc == NULL)
     return NULL;
@@ -248,6 +246,7 @@ btenc_close_page(struct btenc * const enc, const bool leaf)
 // true: the kv has been added
 // false: the sst is full and should be closed; meanwhile the input kv is not consumed
 // the caller must always maintain a copy of the previously inserted kv (use kv_null() for the first kv)
+// the lcp only applies to anchor keys in bt
   static bool
 btenc_append(struct btenc * const enc, const struct kv * const kv,
     const struct kv * const prev, const bool internal, const bool lcp)
@@ -369,6 +368,7 @@ bt_build_at(const int dfd, struct miter * const miter,
   if (fdout < 0)
     return 0;
 
+  debug_assert(cfg->max_pages <= SST_MAX_PAGEID);
   struct btenc * const enc = btenc_create(fdout, cfg->max_pages);
   debug_assert(enc);
 
@@ -592,6 +592,7 @@ blbf_destroy(struct blbf * bf)
   free(bf);
 }
 
+// Wenshao: init needs metadata
   static bool
 bt_init(const int fd, const struct btmeta * const meta, struct bt * const bt, const bool pinned)
 {
@@ -1408,12 +1409,12 @@ bt_iter_match(struct bt_iter * const iter, const struct kref * const key)
 {
   struct bt * bt = iter->bt;
   if (bt->meta.nr_leaf == 0)
-    return NULL;
+    return false;
 
   // first way: check bloom filters before we go into the index
   const bool might_exist = btbf_lookup(bt, key);
   if (might_exist == false) {
-    return NULL;
+    return false;
   }
 
   iter->nr_leaf = bt->meta.nr_leaf;
@@ -1424,7 +1425,7 @@ bt_iter_match(struct bt_iter * const iter, const struct kref * const key)
   // save one I/O to the actual leaf block
   const bool might_exist1 = blbf_lookup(bt, iter->ptr.pageid, key);
   if (might_exist1 == false) {
-    return NULL;
+    return false;
   }
 
   const bool match = bt_page_seek_leaf(iter, key);
@@ -1505,6 +1506,7 @@ struct mbt {
   union {
     struct remix * remix; // optional
     struct dummy * dummy;
+    struct findex * findex;
   };
   // mbt is both x and y, if it has remix, it's y
   struct rcache * rc;
@@ -2040,6 +2042,13 @@ struct dummy {
   struct kv * last_key;
 };
 
+struct findex {
+  struct bt bt;
+  struct kv * first_key;
+  struct kv * last_key;
+};
+
+// TODO: separate out x_stats from dummy_stats
   void
 mbtx_stats(const struct mbt * const mbt, struct msst_stats * const stats)
 {
@@ -2050,7 +2059,8 @@ mbtx_stats(const struct mbt * const mbt, struct msst_stats * const stats)
     stats->meta_sz += sizeof(bt->meta);
     stats->totkv += bt->meta.nr_kvs;
     const struct btmeta * const meta = &bt->meta;
-    stats->totsz += (PGSZ * (meta->root + 1)) + meta->btbf_size + meta->blbf_size + sizeof(*meta);
+    stats->totsz +=
+      (PGSZ * (meta->root + 1)) + meta->btbf_size + meta->blbf_size + sizeof(*meta);
   }
   stats->nr_runs = mbt->nr_runs;
   stats->valid = stats->totkv;
@@ -2066,6 +2076,7 @@ mbtx_stats(const struct mbt * const mbt, struct msst_stats * const stats)
   }
 }
 
+// TODO: this could be reduced by storing a kvmap_api in fs
   void
 mbtx_miter_major(struct mbt * const mbt, struct miter * const miter)
 {
@@ -2112,6 +2123,9 @@ dummy_open_at(const int dfd, const u64 seq, const u32 nr_runs)
   dummy->last_key = kz;
 
   free(buff);
+
+  logger_printf("%s seq %lu nr_runs %u\n", __func__,
+      seq, nr_runs);
   return dummy;
 }
 
@@ -2123,6 +2137,9 @@ mbtx_open_d_at(const int dfd, struct mbt * const mbt)
   mbt->dummy = dummy;
   return dummy != NULL;
 }
+
+// dummy has this format
+// [key0] [keyz] [4: key0_len] [4: keyz_len]
 
   static u32
 dummy_build_at(const int dfd, struct mbt * const x1)
@@ -2674,7 +2691,8 @@ mbty_stats(const struct mbt * const mbt, struct msst_stats * const stats)
     stats->meta_sz += sizeof(bt->meta);
     stats->totkv += bt->meta.nr_kvs;
     const struct btmeta * const meta = &bt->meta;
-    stats->totsz += (PGSZ * (meta->root + 1)) + meta->btbf_size + meta->blbf_size + sizeof(*meta);
+    stats->totsz +=
+      (PGSZ * (meta->root + 1)) + meta->btbf_size + meta->blbf_size + sizeof(*meta);
   }
   stats->nr_runs = mbt->nr_runs;
   const struct remix * const remix = mbt->remix;
@@ -3669,6 +3687,7 @@ remixbm_create(const struct remix_build_info * const bi)
     b->pkf = pkf_create();
   }
 
+  // TODO: this part is weird
   const struct kvmap_api * const api_build = &kvmap_api_bt;
   struct miter * const miter = miter_create();
   b->miter = miter;
@@ -5359,7 +5378,8 @@ remix_build_at(const int dfd, struct mbt * const x1,
 
   struct remix_build_info bi = {.x1 = x1, .y0 = y0,
                                 .tags = gen_tags, .dbits = gen_dbits,
-                                .fd = fdout, .flush_thre_segment_nkeys = FLUSH_THRE_SEGMENT_NKEYS,
+                                .fd = fdout,
+                                .flush_thre_segment_nkeys = FLUSH_THRE_SEGMENT_NKEYS,
                                 .max_segment_nkeys = FLUSH_THRE_SEGMENT_NKEYS<<1,
                                 .nr_reuse = nr_reuse,
                                 .merge_hist = merge_hist,
@@ -5472,6 +5492,646 @@ mbty_comp_est_remix(const u64 nkeys, const float run)
 // }}} main
 
 // }}} remix_build
+
+// {{{ full index
+  inline void
+mbtf_rcache(struct mbt * const mbt, struct rcache * const rc)
+{
+  mbtx_rcache(mbt, rc);
+  if (mbt->findex != NULL) {
+    bt_rcache(&mbt->findex->bt, rc);
+  }
+}
+
+  static struct findex *
+findex_open_at(const int dfd, const u64 seq, const u32 nr_runs)
+{
+  char fn[16];
+  const u64 magic = seq * 100lu + nr_runs;
+  sprintf(fn, "%03lu.findex", magic);
+  const int fd = openat(dfd, fn, O_RDONLY);
+  if (fd < 0)
+    return NULL;
+
+  const size_t fsize = fdsize(fd);
+
+  u32 first_key_len, last_key_len;
+  pread(fd, &first_key_len, sizeof(u32), fsize - (2 * sizeof(u32)));
+  pread(fd, &last_key_len, sizeof(u32), fsize - sizeof(u32));
+
+  const u32 first_offset =
+    fsize - (first_key_len + last_key_len + (2 * sizeof(u32)));
+
+  const u32 last_offset = fsize - (last_key_len + (2 * sizeof(u32)));
+
+  struct kv * first_key = calloc(1, first_key_len + sizeof(*first_key));
+  pread(fd, first_key->kv, first_key_len, first_offset);
+
+  struct kv * last_key = calloc(1, last_key_len + sizeof(*last_key));
+  pread(fd, last_key->kv, last_key_len, last_offset);
+
+  first_key->klen = first_key_len;
+  last_key->klen = last_key_len;
+
+  struct btmeta meta;
+  const u32 meta_offset = fsize -
+    (sizeof(struct btmeta) + first_key_len + last_key_len + (2 * sizeof(u32)));
+
+  struct findex * findex = malloc(sizeof(*findex));
+  pread(fd, &meta, sizeof(meta), meta_offset);
+  bt_init(fd, &meta, &findex->bt, false);
+
+  findex->first_key = first_key;
+  findex->last_key = last_key;
+
+  logger_printf("%s seq %lu nr_runs %u nr_keys %u nr_pages %u\n", __func__,
+      seq, nr_runs, findex->bt.meta.nr_kvs, findex->bt.meta.root);
+  return findex;
+}
+
+  static void
+findex_destroy(struct findex * const findex)
+{
+  free(findex->first_key);
+  free(findex->last_key);
+  bt_deinit(&findex->bt);
+  free(findex);
+}
+
+ static u32
+findex_build_at(const int dfd, struct mbt * const x1)
+{
+  char fn[24];
+  const u64 magic = mbt_get_magic(x1);
+  sprintf(fn, "%03lu.findex", magic);
+  const int fdout = openat(dfd, fn, O_WRONLY|O_CREAT|O_TRUNC, 00644);
+  if (fdout < 0)
+    return 0;
+
+  // TODO: pick a max pages
+  struct btenc * btenc = btenc_create(fdout, UINT32_MAX);
+
+  struct kv * tmp0 = malloc(sizeof(*tmp0) + PGSZ);
+  struct kv * tmp1 = malloc(sizeof(*tmp1) + PGSZ);
+
+  struct miter * const miter = miter_create();
+  struct bt_iter * iters[MSST_NR_RUNS];
+  const u32 nr_runs = x1->nr_runs;
+  for (u32 i = 0; i < nr_runs; i++) {
+    iters[i] = miter_add(miter, &kvmap_api_bt, &x1->bts[i]);
+  }
+
+  struct kv * first_key = NULL;
+  struct kv * last_key = NULL;
+  struct kv * prev = kv_dup2(kv_null(), tmp0);
+
+  miter_seek(miter, kref_null());
+  if (miter_valid(miter)) {
+    first_key = miter_peek(miter, NULL);
+  }
+
+  char findex_value[sizeof(u8) + sizeof(struct bt_ptr)];
+  // [ key ] { value: [1 byte: rank] [4 bytes: bt_ptr]}
+
+  while (miter_valid(miter)) {
+    struct kv * curr = miter_peek(miter, tmp1);
+    debug_assert(curr);
+
+    // when the current key is the same as the previous key
+    const bool stale = (prev != NULL) && (kv_match(prev, curr));
+    // don't encode it if this is a stale key
+    const u32 rank = miter_rank(miter);
+    debug_assert(rank < MSST_NR_RUNS);
+
+    struct bt_ptr ptr = iters[rank]->ptr;
+    findex_value[0] = (u8)rank;
+    memcpy(findex_value + 1, &ptr, sizeof(ptr));
+    kv_refill_value(curr, &findex_value, sizeof(findex_value));
+
+    const bool r = btenc_append(btenc, curr, prev, false, true);
+    if (!r)
+      debug_die();
+    miter_skip1(miter);
+
+    if (!stale) {
+      kv_dup2_key(curr, prev);
+      prev = tmp0;
+    }
+    last_key = prev;
+  }
+
+  struct btmeta meta;
+  const u64 nr_pages = btenc_finish(btenc, &meta);
+  const u64 pages_size = nr_pages * PGSZ;
+
+  lseek(fdout, (off_t)pages_size, SEEK_SET);
+
+  write(fdout, &meta, sizeof(meta));
+
+  // debug_assert(first_key != NULL && last_key != NULL);
+  u32 first_key_len = 0;
+  u32 last_key_len = 0;
+  if (first_key) {
+    write(fdout, first_key->kv, first_key->klen);
+    first_key_len = first_key->klen;
+    free(first_key);
+  }
+  if (last_key) {
+    write(fdout, last_key->kv, last_key->klen);
+    last_key_len = last_key->klen;
+  }
+
+  write(fdout, &first_key_len, sizeof(first_key_len));
+  write(fdout, &last_key_len, sizeof(last_key_len));
+
+  // we don't free last_key since its in tmp0
+  free(tmp0);
+  free(tmp1);
+
+  fdatasync(fdout);
+  close(fdout);
+  btenc_destroy(btenc);
+
+  miter_destroy(miter);
+
+  logger_printf("%s seq %lu nr_runs %u nr_keys %u pages %u first_key_len %u last_key_len %u\n", __func__,
+      x1->seq, nr_runs, meta.nr_kvs, meta.root, first_key_len, last_key_len);
+
+  return pages_size + sizeof(meta) + (2 * sizeof(u32)) +
+              first_key_len + last_key_len;
+}
+
+  static bool
+mbtx_open_f_at(const int dfd, struct mbt * const mbt)
+{
+  debug_assert(mbt->findex == NULL);
+  struct findex * const findex =
+    findex_open_at(dfd, mbt->seq, mbt->nr_runs);
+  mbt->findex = findex;
+  return findex != NULL;
+}
+
+  struct mbt *
+findex_build_at_reuse(const int dfd, struct rcache * const rc,
+    struct msstz_ytask * task, struct msstz_cfg * zcfg, u64 * ysz)
+{
+  (void)zcfg;
+  struct mbt * mbt = mbtx_open_at_reuse(dfd, task->seq1, task->run1, task->y0, task->run0);
+
+  mbty_rcache(mbt, rc);
+  u32 size = findex_build_at(dfd, mbt);
+  if (size == 0) {
+    debug_die();
+  }
+  *ysz = size;
+
+  if (mbtx_open_f_at(dfd, mbt) == false) {
+    debug_die();
+  }
+
+  return mbt;
+}
+
+  struct mbt *
+mbtf_open_at(const int dfd, const u64 seq, const u32 nr_runs)
+{
+  struct mbt * const mbt = mbtx_open_at(dfd, seq, nr_runs);
+  if (mbt == NULL)
+    return NULL;
+
+  if (mbtx_open_f_at(dfd, mbt) == false) {
+    mbtx_destroy(mbt);
+    return NULL;
+  }
+
+  return mbt;
+}
+
+  struct mbt *
+mbtf_open(const char * const dirname, const u64 seq, const u32 nr_runs)
+{
+  const int dfd = open(dirname, O_RDONLY|O_DIRECTORY);
+  if (dfd < 0)
+    return NULL;
+
+  struct mbt * const mbt = mbtf_open_at(dfd, seq, nr_runs);
+  close(dfd);
+  return mbt;
+}
+
+  struct mbt *
+mbtf_create_at(const int dfd)
+{
+  struct mbt * mbt = mbtx_open_at(dfd, 0, 0);
+  if (mbt == NULL) {
+    return NULL;
+  }
+
+  if (!findex_build_at(dfd, mbt)) {
+    mbtx_destroy(mbt);
+    return NULL;
+  }
+
+  if (!mbtx_open_f_at(dfd, mbt)) {
+    mbtx_destroy(mbt);
+    return NULL;
+  }
+
+  return mbt;
+}
+
+  void
+mbtf_destroy(struct mbt * const mbt)
+{
+  findex_destroy(mbt->findex);
+  mbt->findex = NULL;
+  mbtx_destroy(mbt);
+}
+
+  static void
+mbtf_destroy_lazy(struct mbt * const mbt)
+{
+  findex_destroy(mbt->findex);
+  mbt->findex = NULL;
+  mbtx_destroy_lazy(mbt);
+}
+
+  struct kv *
+mbtf_first_key(struct mbt * const mbt, struct kv * const out)
+{
+  debug_assert(mbt->findex);
+  return kv_dup2(mbt->findex->first_key, out);
+}
+
+  struct kv *
+mbtf_last_key(struct mbt * const mbt, struct kv * const out)
+{
+  debug_assert(mbt->findex);
+  return kv_dup2(mbt->findex->last_key, out);
+}
+
+  void
+mbtf_drop_lazy(struct mbt * const mbt)
+{
+  if (mbt->refcnt == 1) {
+    mbtf_destroy_lazy(mbt);
+  } else {
+    mbt->refcnt--;
+  }
+}
+
+  void
+mbtf_drop(struct mbt * const mbt)
+{
+  if (mbt->refcnt == 1) {
+    mbtf_destroy(mbt);
+  } else {
+    mbt->refcnt--;
+  }
+}
+
+  void
+mbtf_miter_major(struct mbt * const mbt, struct miter * const miter)
+{
+  miter_add(miter, &kvmap_api_mbtf, mbt);
+}
+
+struct mbtf_iter {
+  struct mbt * mbt;
+  struct findex * findex;
+  struct bt_ptr ptr;
+  u32 rank;
+  u32 nr_runs;
+  struct bt_iter findex_iter;
+  struct bt_iter iters[MSST_NR_RUNS];
+};
+
+  struct mbtf_iter *
+mbtf_iter_create(struct mbtf_ref * const ref)
+{
+  return (struct mbtf_iter *)ref;
+}
+
+  static struct bt_iter *
+mbtf_iter_bt_iter(struct mbtf_iter * const iter)
+{
+  debug_assert(mbtf_iter_valid(iter));
+  return &iter->iters[iter->rank];
+}
+
+  static void
+mbtf_iter_sync(struct mbtf_iter * const iter)
+{
+  const u8 * const vptr = bt_iter_vptr(&iter->findex_iter);
+  const u32 rank = vptr[0];
+
+  iter->rank = rank;
+  memcpy(&iter->ptr, vptr + 1, sizeof(iter->ptr));
+  debug_assert(rank < iter->nr_runs);
+
+  struct bt_iter * bt_iter = &iter->iters[rank];
+  bt_iter_set_ptr(bt_iter, iter->ptr);
+  if (bt_iter_valid(bt_iter))
+    bt_iter_fix_kv(bt_iter);
+}
+
+  static struct bt_iter *
+mbtf_iter_match(struct mbtf_iter * const iter, const struct kref * const key, const bool hide_ts)
+{
+  if (bt_iter_match(&iter->findex_iter, key) == false) {
+    return NULL;
+  }
+
+  mbtf_iter_sync(iter);
+  if (mbtf_iter_valid(iter) == false) {
+    debug_die();
+    return NULL;
+  }
+
+  struct bt_iter * bt_iter = mbtf_iter_bt_iter(iter);
+  debug_assert(bt_iter_compare_kref(bt_iter, key) == 0);
+
+  if (hide_ts && bt_iter_ts(bt_iter)) {
+    return NULL;
+  }
+
+  return bt_iter;
+}
+
+  static struct kv *
+mbtf_get_internal(struct mbtf_ref * const ref, const struct kref * const key, struct kv * const out, const bool hide_ts)
+{
+  struct mbtf_iter * const iter = (typeof(iter))ref;
+  struct bt_iter * const iter1 = mbtf_iter_match(iter, key, hide_ts);
+  if (iter1) {
+    struct kv * const ret = bt_iter_peek(iter1, out);
+    mbtf_iter_park(iter);
+    return ret;
+  } else {
+    return NULL;
+  }
+}
+
+  struct kv *
+mbtf_get_ts(struct mbtf_ref * const ref, const struct kref * const key, struct kv * const out)
+{
+  return mbtf_get_internal(ref, key, out, true);
+}
+
+  struct kv *
+mbtf_get(struct mbtf_ref * const ref, const struct kref * const key, struct kv * const out)
+{
+  return mbtf_get_internal(ref, key, out, false);
+}
+
+  bool
+mbtf_get_value_ts(struct mbtf_ref * const ref, const struct kref * key, void * const vbuf_out, u32 * const vlen_out)
+{
+  struct mbtf_iter * const iter = (typeof(iter))ref;
+  struct bt_iter * const iter1 = mbtf_iter_match(iter, key, true);
+  if (iter1) {
+    memcpy(vbuf_out, iter1->kvdata + iter1->klen, iter1->vlen);
+    *vlen_out = iter1->vlen;
+    mbtf_iter_park(iter);
+    return true;
+  } else {
+    return false;
+  }
+}
+
+  static bool
+mbtf_probe_internal(struct mbtf_ref * const ref, const struct kref * const key, const bool hide_ts)
+{
+  struct mbtf_iter * const iter = (typeof(iter))ref;
+  struct bt_iter * iter1 = mbtf_iter_match(iter, key, hide_ts);
+  if (iter1) {
+    mbtf_iter_park(iter);
+    return true;
+  } else {
+    return false;
+  }
+}
+
+  bool
+mbtf_probe_ts(struct mbtf_ref * const ref, const struct kref * const key)
+{
+  return mbtf_probe_internal(ref, key, true);
+}
+
+  bool
+mbtf_probe(struct mbtf_ref * const ref, const struct kref * const key)
+{
+  return mbtf_probe_internal(ref, key, false);
+}
+
+  void
+mbtf_iter_seek(struct mbtf_iter * const iter, const struct kref * const key)
+{
+  mbtf_iter_park(iter);
+
+  if (bt_iter_seek_le(&iter->findex_iter, key) == false)
+    return;
+
+  mbtf_iter_sync(iter);
+}
+
+  struct kv *
+mbtf_iter_peek(struct mbtf_iter * const iter, struct kv * const out)
+{
+  if (mbtf_iter_valid(iter) == false)
+    return NULL;
+
+  struct bt_iter * const iter1 = mbtf_iter_bt_iter(iter);
+  return bt_iter_peek(iter1, out);
+}
+
+  bool
+mbtf_iter_kref(struct mbtf_iter * const iter, struct kref * const kref)
+{
+  if (mbtf_iter_valid(iter) == false)
+    return false;
+
+  struct bt_iter * const iter1 = mbtf_iter_bt_iter(iter);
+  return bt_iter_kref(iter1, kref);
+}
+
+  bool
+mbtf_iter_kvref(struct mbtf_iter * const iter, struct kvref * const kvref)
+{
+  if (mbtf_iter_valid(iter) == false)
+    return false;
+
+  struct bt_iter * const iter1 = mbtf_iter_bt_iter(iter);
+  return bt_iter_kvref(iter1, kvref);
+}
+
+  u64
+mbtf_iter_retain(struct mbtf_iter * const iter)
+{
+  debug_assert(mbtf_iter_valid(iter));
+  struct bt_iter * const iter1 = mbtf_iter_bt_iter(iter);
+  debug_assert(iter1->bt->rc == iter->findex->bt.rc);
+  return bt_iter_retain(iter1);
+}
+
+  bool
+mbtf_iter_ts(struct mbtf_iter * const iter)
+{
+  debug_assert(mbtf_iter_valid(iter));
+
+  struct bt_iter * const iter1 = mbtf_iter_bt_iter(iter);
+  return iter1->vlen == SST_VLEN_TS;
+}
+
+  void
+mbtf_iter_skip1(struct mbtf_iter * const iter)
+{
+  if (mbtf_iter_valid(iter) == false)
+    return;
+
+  bt_iter_skip1(&iter->findex_iter);
+
+  mbtf_iter_sync(iter);
+}
+
+  void
+mbtf_iter_release(struct mbtf_iter * const iter, const u64 opaque)
+{
+  bt_page_release(iter->findex->bt.rc, (const u8 *)opaque);
+}
+
+  void
+mbtf_iter_skip(struct mbtf_iter * const iter, const u32 nr)
+{
+  for (u32 i = 0; i < nr; i++) {
+    if (mbtf_iter_valid(iter) == false)
+      return;
+
+    mbtf_iter_skip1(iter);
+  }
+}
+
+  struct kv *
+mbtf_iter_next(struct mbtf_iter * const iter, struct kv * const out)
+{
+  struct kv * const ret = mbtf_iter_peek(iter, out);
+  mbtf_iter_skip1(iter);
+  return ret;
+}
+
+  struct mbtf_iter *
+mbtf_iter_new()
+{
+  struct mbtf_iter * const iter = malloc(sizeof(*iter));
+  return iter;
+}
+
+  void
+mbtf_iter_init(struct mbtf_iter * const iter, struct mbt * const mbt)
+{
+  debug_assert(mbt->findex);
+  iter->mbt = mbt;
+  struct findex * const findex = mbt->findex;
+  iter->findex = findex;
+  iter->nr_runs = mbt->nr_runs;
+  iter->rank = UINT8_MAX;
+  bt_iter_init(&iter->findex_iter, &findex->bt, UINT8_MAX);
+  for (u32 i = 0; i < iter->nr_runs; i++)
+    bt_iter_init(&iter->iters[i], &mbt->bts[i], (u8)i);
+}
+
+  bool
+mbtf_iter_valid(const struct mbtf_iter * const iter)
+{
+  const bool valid = (iter->rank < iter->nr_runs);
+  if (valid == false) {
+    return false;
+  }
+  const struct bt_iter * bt_iter = &iter->iters[iter->rank];
+  return bt_iter_valid(bt_iter);
+}
+
+  void
+mbtf_iter_seek_null(struct mbtf_iter * const iter)
+{
+  mbtf_iter_park(iter);
+  bt_iter_seek_null(&iter->findex_iter);
+  if (bt_iter_valid(&iter->findex_iter))
+    bt_iter_fix_kv(&iter->findex_iter);
+  mbtf_iter_sync(iter);
+}
+
+  void
+mbtf_iter_park(struct mbtf_iter * const iter)
+{
+  iter->rank = UINT8_MAX;
+  bt_iter_park(&(iter->findex_iter));
+  for (u32 i = 0; i < iter->nr_runs; i++)
+    bt_iter_park(&(iter->iters[i]));
+}
+
+  void
+mbtf_fprint(struct mbt * const mbt, FILE * const fout)
+{
+  const u32 nr_runs = mbt->nr_runs;
+  fprintf(fout, "%s seq %lu nr_runs %u\n", __func__, mbt->seq, nr_runs);
+  fprintf(fout, "findex bt: ");
+  bt_fprint(&mbt->findex->bt, fout);
+  for (u32 i = 0; i < nr_runs; i++)
+    bt_fprint(&(mbt->bts[i]), fout);
+}
+
+  void
+mbtf_stats(const struct mbt * const mbt, struct msst_stats * const stats)
+{
+  memset(stats, 0, sizeof(*stats));
+  for (u32 i = 0; i < mbt->nr_runs; i++) {
+    const struct bt * const bt = &(mbt->bts[i]);
+    stats->data_sz += (PGSZ * bt->meta.nr_leaf);
+    stats->meta_sz += sizeof(bt->meta);
+    stats->totkv += bt->meta.nr_kvs;
+    const struct btmeta * const meta = &bt->meta;
+    stats->totsz +=
+      (PGSZ * (meta->root + 1)) + meta->btbf_size + meta->blbf_size + sizeof(*meta);
+  }
+  stats->nr_runs = mbt->nr_runs;
+  const struct findex * const findex = mbt->findex;
+  stats->ssty_sz = 0;
+  if (findex != NULL) {
+    stats->valid = findex->bt.meta.nr_kvs;
+    stats->ssty_sz += findex->bt.meta.root * PGSZ;
+    stats->ssty_sz += (findex->first_key->klen + sizeof(u32));
+    stats->ssty_sz += (findex->last_key->klen + sizeof(u32));
+  }
+}
+
+  void
+mbtf_iter_destroy(struct mbtf_iter * const iter)
+{
+  mbtf_iter_park(iter);
+}
+
+  struct mbtf_ref *
+mbtf_ref(struct mbt * const mbt)
+{
+  struct mbtf_iter * const iter = malloc(sizeof(*iter));
+  if (iter == NULL)
+    return NULL;
+
+  mbtf_iter_init(iter, mbt);
+  return (struct mbtf_ref *)iter;
+}
+
+  struct mbt *
+mbtf_unref(struct mbtf_ref * const ref)
+{
+  struct mbtf_iter * const iter = (typeof(iter))ref;
+  struct mbt * const mbt = iter->mbt;
+  mbtf_iter_park(iter);
+  free(iter);
+  return mbt;
+}
+// }}} full index
 
 // api {{{
 // a drop-in replacement of sst
@@ -5601,6 +6261,30 @@ const struct kvmap_api kvmap_api_mbty_dup = {
   .fprint = (void *)mbty_fprint,
 };
 
+const struct kvmap_api kvmap_api_mbtf = {
+  .ordered = true,
+  .readonly = true,
+  .get = (void *)mbtf_get,
+  .probe = (void *)mbtf_probe,
+  .iter_create = (void *)mbtf_iter_create,
+  .iter_seek = (void *)mbtf_iter_seek,
+  .iter_valid = (void *)mbtf_iter_valid,
+  .iter_peek = (void *)mbtf_iter_peek,
+  .iter_kref = (void *)mbtf_iter_kref,
+  .iter_kvref = (void *)mbtf_iter_kvref,
+  .iter_retain = (void *)mbtf_iter_retain,
+  .iter_release = (void *)mbtf_iter_release,
+  .iter_skip1 = (void *)mbtf_iter_skip1,
+  .iter_skip = (void *)mbtf_iter_skip,
+  .iter_next = (void *)mbtf_iter_next,
+  .iter_park = (void *)mbtf_iter_park,
+  .iter_destroy = (void *)mbtf_iter_destroy,
+  .ref = (void *)mbtf_ref,
+  .unref = (void *)mbtf_unref,
+  .destroy = (void *)mbtf_destroy,
+  .fprint = (void *)mbtf_fprint,
+};
+
   static void *
 bt_kvmap_api_create(const char * const name, const struct kvmap_mm * const mm, char ** args)
 {
@@ -5611,6 +6295,8 @@ bt_kvmap_api_create(const char * const name, const struct kvmap_mm * const mm, c
     return mbtx_open(args[0], a2u64(args[1]), a2u32(args[2]));
   } else if ((!strcmp(name, "mbty")) || (!strcmp(name, "mbty_ts")) || (!strcmp(name, "mbty_dup"))) {
     return mbty_open(args[0], a2u64(args[1]), a2u32(args[2]));
+  } else if (!strcmp(name, "mbtf")) {
+    return mbtf_open(args[0], a2u64(args[1]), a2u32(args[2]));
   } else {
     return NULL;
   }
@@ -5626,6 +6312,7 @@ bt_kvmap_api_init(void)
   kvmap_api_register(3, "mbty", "<dirname> <seq> <nr_runs>", bt_kvmap_api_create, &kvmap_api_mbty);
   kvmap_api_register(3, "mbty_ts", "<dirname> <seq> <nr_runs>", bt_kvmap_api_create, &kvmap_api_mbty_ts);
   kvmap_api_register(3, "mbty_dup", "<dirname> <seq> <nr_runs>", bt_kvmap_api_create, &kvmap_api_mbty_dup);
+  kvmap_api_register(3, "mbtf", "<dirname> <seq> <nr_runs>", bt_kvmap_api_create, &kvmap_api_mbtf);
 }
 // }}} api
 

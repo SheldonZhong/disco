@@ -445,11 +445,126 @@ mbty_last_key(struct mbt * const mbt, struct kv * const out);
 mbty_dump(struct mbt * const mbt, const char * const fn);
 // }}} mbty
 
+// {{{ findex - full index
+struct mbtf_ref;
+struct mbtf_iter;
+
+  extern void
+mbtf_rcache(struct mbt * const mbt, struct rcache * const rc);
+
+  extern struct mbt *
+mbtf_open_at(const int dfd, const u64 seq, const u32 nr_runs);
+
+  extern struct mbt *
+mbtf_create_at(const int dfd);
+
+  extern void
+mbtf_destroy(struct mbt * const mbt);
+
+  extern struct kv *
+mbtf_first_key(struct mbt * const mbt, struct kv * const out);
+
+  extern struct kv *
+mbtf_last_key(struct mbt * const mbt, struct kv * const out);
+
+  extern void
+mbtf_drop(struct mbt * const mbt);
+
+  extern void
+mbtf_drop_lazy(struct mbt * const mbt);
+
+  extern struct kv *
+mbtf_get(struct mbtf_ref * const ref, const struct kref * const key, struct kv * const out);
+
+  extern struct kv *
+mbtf_get_ts(struct mbtf_ref * const ref, const struct kref * const key, struct kv * const out);
+
+  extern bool
+mbtf_get_value_ts(struct mbtf_ref * const ref, const struct kref * key, void * const vbuf_out, u32 * const vlen_out);
+
+  extern bool
+mbtf_probe(struct mbtf_ref * const ref, const struct kref * const key);
+
+  extern bool
+mbtf_probe_ts(struct mbtf_ref * const ref, const struct kref * const key);
+
+  extern void
+mbtf_iter_seek_null(struct mbtf_iter * const iter);
+
+  extern struct mbtf_iter *
+mbtf_iter_new();
+
+  extern struct mbtf_iter *
+mbtf_iter_create(struct mbtf_ref * const ref);
+
+  extern bool
+mbtf_iter_valid(const struct mbtf_iter * const iter);
+
+  extern void
+mbtf_fprint(struct mbt * const mbt, FILE * const fout);
+
+  extern void
+mbtf_stats(const struct mbt * const mbt, struct msst_stats * const stats);
+
+  extern void
+mbtf_miter_major(struct mbt * const mbt, struct miter * const miter);
+
+  extern struct mbt *
+findex_build_at_reuse(const int dfd, struct rcache * const rc,
+    struct msstz_ytask * task, struct msstz_cfg * zcfg, u64 * ysz);
+
+  extern void
+mbtf_iter_init(struct mbtf_iter * const iter, struct mbt * const mbt);
+
+  extern void
+mbtf_iter_park(struct mbtf_iter * const iter);
+
+  extern void
+mbtf_iter_destroy(struct mbtf_iter * const iter);
+
+  extern struct mbtf_ref *
+mbtf_ref(struct mbt * const mbt);
+
+  extern struct mbt *
+mbtf_unref(struct mbtf_ref * const ref);
+
+  extern void
+mbtf_iter_seek(struct mbtf_iter * const iter, const struct kref * const key);
+
+  extern struct kv *
+mbtf_iter_peek(struct mbtf_iter * const iter, struct kv * const out);
+
+  extern bool
+mbtf_iter_kref(struct mbtf_iter * const iter, struct kref * const kref);
+
+  extern bool
+mbtf_iter_kvref(struct mbtf_iter * const iter, struct kvref * const kvref);
+
+  extern u64
+mbtf_iter_retain(struct mbtf_iter * const iter);
+
+  extern bool
+mbtf_iter_ts(struct mbtf_iter * const iter);
+
+  extern void
+mbtf_iter_skip1(struct mbtf_iter * const iter);
+
+  extern void
+mbtf_iter_release(struct mbtf_iter * const iter, const u64 opaque);
+
+  extern void
+mbtf_iter_skip(struct mbtf_iter * const iter, const u32 nr);
+
+  extern struct kv *
+mbtf_iter_next(struct mbtf_iter * const iter, struct kv * const out);
+// }}}
+
 // api {{{
 extern const struct kvmap_api kvmap_api_bt;
 extern const struct kvmap_api kvmap_api_mbtx;
 extern const struct kvmap_api kvmap_api_mbty;
 extern const struct kvmap_api kvmap_api_mbty_ts;
+extern const struct kvmap_api kvmap_api_mbtf;
 // }}} api
 
 // vim:fdm=marker
