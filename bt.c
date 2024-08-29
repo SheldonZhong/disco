@@ -5812,16 +5812,15 @@ mbtf_iter_create(struct mbtf_ref * const ref)
   return (struct mbtf_iter *)ref;
 }
 
-  static struct bt_iter *
-mbtf_iter_bt_iter(struct mbtf_iter * const iter)
-{
-  debug_assert(mbtf_iter_valid(iter));
-  return &iter->iters[iter->rank];
-}
-
   static void
 mbtf_iter_sync(struct mbtf_iter * const iter)
 {
+  if (bt_iter_valid(&iter->findex_iter) == false) {
+    iter->rank = UINT8_MAX;
+    return;
+  }
+
+  bt_iter_fix_kv(&iter->findex_iter);
   const u8 * const vptr = bt_iter_vptr(&iter->findex_iter);
   const u32 rank = vptr[0];
 
@@ -5836,6 +5835,18 @@ mbtf_iter_sync(struct mbtf_iter * const iter)
 }
 
   static struct bt_iter *
+mbtf_iter_bt_iter(struct mbtf_iter * const iter)
+{
+  debug_assert(mbtf_iter_valid(iter));
+  mbtf_iter_sync(iter);
+
+  struct bt_iter * bt_iter = &iter->iters[iter->rank];
+  debug_assert(bt_iter_valid(bt_iter));
+
+  return bt_iter;
+}
+
+  static struct bt_iter *
 mbtf_iter_match(struct mbtf_iter * const iter, const struct kref * const key, const bool hide_ts)
 {
   if (bt_iter_match(&iter->findex_iter, key) == false) {
@@ -5843,10 +5854,6 @@ mbtf_iter_match(struct mbtf_iter * const iter, const struct kref * const key, co
   }
 
   mbtf_iter_sync(iter);
-  if (mbtf_iter_valid(iter) == false) {
-    debug_die();
-    return NULL;
-  }
 
   struct bt_iter * bt_iter = mbtf_iter_bt_iter(iter);
   debug_assert(bt_iter_compare_kref(bt_iter, key) == 0);
@@ -5990,8 +5997,6 @@ mbtf_iter_skip1(struct mbtf_iter * const iter)
     return;
 
   bt_iter_skip1(&iter->findex_iter);
-
-  mbtf_iter_sync(iter);
 }
 
   void
@@ -6047,8 +6052,8 @@ mbtf_iter_valid(const struct mbtf_iter * const iter)
   if (valid == false) {
     return false;
   }
-  const struct bt_iter * bt_iter = &iter->iters[iter->rank];
-  return bt_iter_valid(bt_iter);
+
+  return bt_iter_valid(&iter->findex_iter);
 }
 
   void
@@ -6056,8 +6061,6 @@ mbtf_iter_seek_null(struct mbtf_iter * const iter)
 {
   mbtf_iter_park(iter);
   bt_iter_seek_null(&iter->findex_iter);
-  if (bt_iter_valid(&iter->findex_iter))
-    bt_iter_fix_kv(&iter->findex_iter);
   mbtf_iter_sync(iter);
 }
 
