@@ -5533,7 +5533,7 @@ findex_open_at(const int dfd, const u64 seq, const u32 nr_runs)
   first_key->klen = first_key_len;
   last_key->klen = last_key_len;
 
-  struct btmeta meta;
+  struct btmeta meta = {};
   const u32 meta_offset = fsize -
     (sizeof(struct btmeta) + first_key_len + last_key_len + (2 * sizeof(u32)));
 
@@ -5620,7 +5620,7 @@ findex_build_at(const int dfd, struct mbt * const x1)
     last_key = prev;
   }
 
-  struct btmeta meta;
+  struct btmeta meta = {};
   const u64 nr_pages = btenc_finish(btenc, &meta);
   const u64 pages_size = nr_pages * PGSZ;
 
