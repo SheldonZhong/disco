@@ -393,9 +393,6 @@ ssty_build_at_reuse(const int dfd, struct rcache * const rc,
     struct msstz_ytask * task, struct msstz_cfg * zcfg, u64 * ysz);
 
   extern void
-mssty_miter_major(struct msst * const msst, struct miter * const miter);
-
-  extern void
 mssty_miter_partial(struct msst * const msst, struct miter * const miter, const u32 bestrun);
 
   u64

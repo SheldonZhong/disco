@@ -779,7 +779,7 @@ msstz_comp_part(struct msstz_comp_info * const ci, const u64 ipart)
     // hard link unchanged files
     msstz_comp_link(z->dfd, seq0, seq1, bestrun);
     if (is_major) { // full
-      vzfs->y_miter_major(mssty0, miter);
+      miter_add(miter, vzfs->map_api, mssty0);
       ci->stat_major++;
       sprintf(comp_str, "major");
     } else { // partial

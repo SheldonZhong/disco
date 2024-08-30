@@ -38,8 +38,8 @@ const struct fs_api sst_fs = {
   .y_comp_est_y = mssty_comp_est_ssty,
   .mt_nkv_at = (void *)msst_nkv_at,
   .mt_nr_pages_at = (void *)msst_nr_pages_at,
-  .y_miter_major = (void *)mssty_miter_major,
   .y_miter_partial = (void *)mssty_miter_partial,
+  .map_api = &kvmap_api_mssty,
   .x_suffix = ".sstx",
   .y_suffix = ".ssty",
 };
@@ -80,8 +80,8 @@ const struct fs_api bt_fs = {
   .y_comp_est_y = mbty_comp_est_remix,
   .mt_nkv_at = (void *)mbt_nkv_at,
   .mt_nr_pages_at = (void *)mbt_nr_pages_at,
-  .y_miter_major = (void *)mbty_miter_major,
   .y_miter_partial = (void *)mbt_miter_partial,
+  .map_api = &kvmap_api_mbty,
   .x_suffix = ".btx",
   .y_suffix = ".remix",
 };
@@ -122,8 +122,8 @@ const struct fs_api bt_dummy_fs = {
   .y_comp_est_y = mbty_comp_est_remix,
   .mt_nkv_at = (void *)mbt_nkv_at,
   .mt_nr_pages_at = (void *)mbt_nr_pages_at,
-  .y_miter_major = (void *)mbtx_miter_major,
   .y_miter_partial = (void *)mbt_miter_partial,
+  .map_api = &kvmap_api_mbtx,
   .x_suffix = ".btx",
   .y_suffix = ".dummy",
 };
@@ -164,8 +164,8 @@ const struct fs_api full_fs = {
   .y_comp_est_y = mbty_comp_est_remix,
   .mt_nkv_at = (void *)mbt_nkv_at,
   .mt_nr_pages_at = (void *)mbt_nr_pages_at,
-  .y_miter_major = (void *)mbtf_miter_major,
   .y_miter_partial = (void *)mbt_miter_partial,
+  .map_api = &kvmap_api_mbtf,
   .x_suffix = ".btx",
   .y_suffix = ".findex",
 };

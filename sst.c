@@ -3773,12 +3773,6 @@ ssty_build_at_reuse(const int dfd, struct rcache * const rc,
 }
 
   void
-mssty_miter_major(struct msst * const msst, struct miter * const miter)
-{
-  miter_add(miter, &kvmap_api_mssty, msst);
-}
-
-  void
 mssty_miter_partial(struct msst * const msst, struct miter * const miter, const u32 bestrun)
 {
   const u32 nrun0 = msst->nr_runs;

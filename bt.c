@@ -2064,13 +2064,6 @@ mbtx_stats(const struct mbt * const mbt, struct msst_stats * const stats)
   stats->nr_runs = mbt->nr_runs;
   stats->valid = stats->totkv;
 }
-
-// TODO: this could be reduced by storing a kvmap_api in fs
-  void
-mbtx_miter_major(struct mbt * const mbt, struct miter * const miter)
-{
-  miter_add(miter, &kvmap_api_mbtx, mbt);
-}
 // }}} mbtx
 
 // {{{ mbtx_dummy
@@ -5450,12 +5443,6 @@ remix_build_at_reuse(const int dfd, struct rcache * const rc,
 }
 
   void
-mbty_miter_major(struct mbt * const mbty, struct miter * const miter)
-{
-  miter_add(miter, &kvmap_api_mbty, mbty);
-}
-
-  void
 mbt_miter_partial(struct mbt * const mbt, struct miter * const miter, const u32 bestrun)
 {
   const u32 nrun0 = mbt->nr_runs;
@@ -5771,12 +5758,6 @@ mbtf_drop(struct mbt * const mbt)
   } else {
     mbt->refcnt--;
   }
-}
-
-  void
-mbtf_miter_major(struct mbt * const mbt, struct miter * const miter)
-{
-  miter_add(miter, &kvmap_api_mbtf, mbt);
 }
 
 struct mbtf_iter {

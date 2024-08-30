@@ -227,9 +227,6 @@ mbtd_drop(struct mbt * const mbt);
   extern struct mbt *
 dummy_build_at_reuse(const int dfd, struct rcache * const rc,
     struct msstz_ytask * task, struct msstz_cfg * zcfg, u64 * ysz);
-
-  extern void
-mbtx_miter_major(struct mbt * const mbt, struct miter * const miter);
 // }}} mbtx
 
 // remix {{{
@@ -254,9 +251,6 @@ remix_build_at(const int dfd, struct mbt * const x1,
   extern struct mbt *
 remix_build_at_reuse(const int dfd, struct rcache * const rc,
     struct msstz_ytask * task, struct msstz_cfg * zcfg, u64 * ysz);
-
-  void
-mbty_miter_major(struct mbt * const mbty, struct miter * const miter);
 
   void
 mbt_miter_partial(struct mbt * const mbty, struct miter * const miter, const u32 bestrun);
@@ -508,9 +502,6 @@ mbtf_fprint(struct mbt * const mbt, FILE * const fout);
 
   extern void
 mbtf_stats(const struct mbt * const mbt, struct msst_stats * const stats);
-
-  extern void
-mbtf_miter_major(struct mbt * const mbt, struct miter * const miter);
 
   extern struct mbt *
 findex_build_at_reuse(const int dfd, struct rcache * const rc,

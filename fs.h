@@ -143,9 +143,6 @@ mssty_comp_est_ssty(const u64 nkeys, const float run);
 msst_nkv_at(const void * const msst, const u32 i);
 
   extern void
-mssty_miter_major(void * const msst, struct miter * const miter);
-
-  extern void
 mssty_miter_partial(void * const msst, struct miter * const miter, const u32 bestrun);
 // }}} msstz needs
 */
@@ -188,8 +185,8 @@ struct fs_api {
   u64 (* y_comp_est_y) (const u64 nkeys, const float run);
   u32 (* mt_nkv_at) (const void * const msst, const u32 i);
   u32 (* mt_nr_pages_at) (const void * const msst, const u32 i);
-  void (* y_miter_major) (void * const msst, struct miter * const miter);
   void (* y_miter_partial) (void * const msst, struct miter * const miter, const u32 bestrun);
+  const struct kvmap_api * map_api;
   const char * const x_suffix;
   const char * const y_suffix;
 };
