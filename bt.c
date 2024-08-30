@@ -820,7 +820,7 @@ bt_destroy(struct bt * const bt)
 bt_fprint(struct bt * const bt, FILE * const out)
 {
   const struct btmeta * const m = &bt->meta;
-  fprintf(out, "%s depth %hu nr_leaf %hu root %u nr_kvs %u\n",
+  fprintf(out, "%s depth %u nr_leaf %u root %u nr_kvs %u\n",
       __func__, m->depth, m->nr_leaf, m->root, m->nr_kvs);
 }
 
