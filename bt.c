@@ -3577,7 +3577,6 @@ struct remixb {
   // copy from msstb
   u32 run0;
   u32 run1;
-  u32 nkidx;
   u32 kidx0;
 
   struct kv * tmp0;
@@ -3680,12 +3679,10 @@ remixbm_create(const struct remix_build_info * const bi)
     b->pkf = pkf_create();
   }
 
-  // TODO: this part is weird
-  const struct kvmap_api * const api_build = &kvmap_api_bt;
   struct miter * const miter = miter_create();
   b->miter = miter;
   for (u32 i = 0; i < b->nr_runs; i++)
-    b->iters[i] = miter_add(miter, api_build, &b->x1->bts[i]);
+    b->iters[i] = miter_add(miter, &kvmap_api_bt, &b->x1->bts[i]);
 
   miter_seek(miter, kref_null());
   if (miter_valid(miter)) {
@@ -4168,9 +4165,6 @@ remixb2_create(struct remix_build_info * const bi)
 
   if (bi->nr_reuse) {
     debug_assert(bi->y0);
-    // TODO: maybe fill these shortcuts
-    // b->nkidx = mssty0->ssty->nkidx; // shortcut
-    // b->ranks = mssty0->ssty->ranks; // shortcut
 
     mbty_iter_init(&(b->iterb), bi->y0);
     mbty_iter_seek(&(b->iterb), kref_null());
@@ -5170,9 +5164,6 @@ remixbh_create(struct remix_build_info * const bi)
 
   if (bi->nr_reuse) {
     debug_assert(bi->y0);
-    // TODO: maybe fill these shortcuts
-    // b->nkidx = mssty0->ssty->nkidx; // shortcut
-    // b->ranks = mssty0->ssty->ranks; // shortcut
 
     mbty_iter_init(&(b->iterb), bi->y0);
     mbty_iter_seek(&(b->iterb), kref_null());
