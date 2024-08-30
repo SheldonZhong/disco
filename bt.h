@@ -207,6 +207,9 @@ mbtx_iter_park(struct mbtx_iter * const iter);
 mbtx_iter_destroy(struct mbtx_iter * const iter);
 
   extern void
+mbtd_stats(const struct mbt * const mbt, struct msst_stats * const stats);
+
+  extern void
 mbtx_stats(const struct mbt * const mbt, struct msst_stats * const stats);
 
   extern struct mbt *

@@ -2048,7 +2048,6 @@ struct findex {
   struct kv * last_key;
 };
 
-// TODO: separate out x_stats from dummy_stats
   void
 mbtx_stats(const struct mbt * const mbt, struct msst_stats * const stats)
 {
@@ -2064,16 +2063,6 @@ mbtx_stats(const struct mbt * const mbt, struct msst_stats * const stats)
   }
   stats->nr_runs = mbt->nr_runs;
   stats->valid = stats->totkv;
-  struct dummy * dummy = mbt->dummy;
-  stats->ssty_sz = 0;
-  if (dummy != NULL) {
-    if (dummy->first_key) {
-      stats->ssty_sz += (dummy->first_key->klen + sizeof(u32));
-    }
-    if (dummy->last_key) {
-      stats->ssty_sz += (dummy->last_key->klen + sizeof(u32));
-    }
-  }
 }
 
 // TODO: this could be reduced by storing a kvmap_api in fs
@@ -2295,6 +2284,22 @@ mbtd_open_at(const int dfd, const u64 seq, const u32 nr_runs)
   }
 
   return mbt;
+}
+
+  void
+mbtd_stats(const struct mbt * const mbt, struct msst_stats * const stats)
+{
+  mbtx_stats(mbt, stats);
+  struct dummy * dummy = mbt->dummy;
+  stats->ssty_sz = 0;
+  if (dummy != NULL) {
+    if (dummy->first_key) {
+      stats->ssty_sz += (dummy->first_key->klen + sizeof(u32));
+    }
+    if (dummy->last_key) {
+      stats->ssty_sz += (dummy->last_key->klen + sizeof(u32));
+    }
+  }
 }
 // }}}
 
@@ -2684,24 +2689,12 @@ mbt_nr_pages_at(const struct mbt * const mbt, const u32 i)
   void
 mbty_stats(const struct mbt * const mbt, struct msst_stats * const stats)
 {
-  memset(stats, 0, sizeof(*stats));
-  for (u32 i = 0; i < mbt->nr_runs; i++) {
-    const struct bt * const bt = &(mbt->bts[i]);
-    stats->data_sz += (PGSZ * bt->meta.nr_leaf);
-    stats->meta_sz += sizeof(bt->meta);
-    stats->totkv += bt->meta.nr_kvs;
-    const struct btmeta * const meta = &bt->meta;
-    stats->totsz +=
-      (PGSZ * (meta->root + 1)) + meta->btbf_size + meta->blbf_size + sizeof(*meta);
-  }
-  stats->nr_runs = mbt->nr_runs;
+  mbtx_stats(mbt, stats);
+  stats->ssty_sz = 0;
   const struct remix * const remix = mbt->remix;
   if (remix != NULL) {
     debug_assert(mbt->nr_runs == remix->nr_runs);
-    // TODO: after we added fsize in meta and totsz in remix
-    // debug_assert(stats->totsz == remix->fsize);
     stats->ssty_sz = remix->fsize;
-    // TODO: check valid count
     stats->valid = remix->meta.stats[0].valid_kv_up;
   }
 }
@@ -5568,7 +5561,6 @@ findex_build_at(const int dfd, struct mbt * const x1)
   if (fdout < 0)
     return 0;
 
-  // TODO: pick a max pages
   struct btenc * btenc = btenc_create(fdout, UINT32_MAX);
 
   struct kv * tmp0 = malloc(sizeof(*tmp0) + PGSZ);
@@ -6087,17 +6079,7 @@ mbtf_fprint(struct mbt * const mbt, FILE * const fout)
   void
 mbtf_stats(const struct mbt * const mbt, struct msst_stats * const stats)
 {
-  memset(stats, 0, sizeof(*stats));
-  for (u32 i = 0; i < mbt->nr_runs; i++) {
-    const struct bt * const bt = &(mbt->bts[i]);
-    stats->data_sz += (PGSZ * bt->meta.nr_leaf);
-    stats->meta_sz += sizeof(bt->meta);
-    stats->totkv += bt->meta.nr_kvs;
-    const struct btmeta * const meta = &bt->meta;
-    stats->totsz +=
-      (PGSZ * (meta->root + 1)) + meta->btbf_size + meta->blbf_size + sizeof(*meta);
-  }
-  stats->nr_runs = mbt->nr_runs;
+  mbtx_stats(mbt, stats);
   const struct findex * const findex = mbt->findex;
   stats->ssty_sz = 0;
   if (findex != NULL) {
