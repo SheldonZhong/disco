@@ -10,5 +10,5 @@ drop_caches
 
 prepare_log test
 
-biosnoop_wrapped smartctl_wrapped "$@"
+iotrace_wrapped "$@"
 

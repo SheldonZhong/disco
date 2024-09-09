@@ -172,6 +172,11 @@ prep()
   set_drive
 }
 
+iotrace_wrapped()
+{
+  smartctl_wrapped biosnoop_wrapped "$@"
+}
+
 BIOSNOOP_EXE=$(dirname "$0")/biosnoop.py
 
 if [ ! -f "$BIOSNOOP_EXE" ]; then
