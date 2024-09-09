@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+source $(dirname "$0")/common
+
+basedir=$2
+
+set_drive
+
+drop_caches
+
+prepare_log test
+
+biosnoop_wrapped smartctl_wrapped "$@"
+

@@ -39,11 +39,6 @@ bpf_text = """
 """
 
 bpf_text += """
-struct start_req_t {
-    u64 ts;
-    u64 data_len;
-};
-
 struct val_t {
     u64 ts;
     u64 data_len;
@@ -79,7 +74,6 @@ struct data_t {
     char name[TASK_COMM_LEN];
 };
 
-BPF_HASH(start, struct hash_key, struct start_req_t);
 BPF_HASH(infobyreq, struct hash_key, struct val_t);
 
 BPF_HASH(counts);
@@ -96,6 +90,9 @@ static dev_t ddevt(struct gendisk *disk) {
 }
 
 static void mark_req(struct hash_key * pkey, u64 bytes) {
+    if (pkey == 0) {
+        return;
+    }
     if (pkey->rwflag == 1) {
         counts.increment(WRITE_COUNT);
         counts.increment(WRITE_IO, bytes);
@@ -139,10 +136,9 @@ static int __trace_pid_start(struct hash_key key, u64 bytes)
 {
     DISK_FILTER
 
-    struct val_t val = {
-        .data_len = bytes,
-        .ts = bpf_ktime_get_ns(),
-    };
+    struct val_t val = {};
+    val.data_len = bytes;
+    val.ts = bpf_ktime_get_ns();
 
     mark_req(&key, bytes);
     if (bpf_get_current_comm(&val.name, sizeof(val.name)) == 0) {
@@ -175,25 +171,6 @@ int trace_pid_start_tp(struct tp_args *args)
     return __trace_pid_start(key, args->bytes);
 }
 
-// time block I/O
-int trace_req_start(struct pt_regs *ctx, struct request *req)
-{
-    struct hash_key key = {
-        .dev = ddevt(req->__RQ_DISK__),
-        .rwflag = get_rwflag(req->cmd_flags),
-        .sector = req->__sector
-    };
-
-    DISK_FILTER
-
-    struct start_req_t start_req = {
-        .ts = bpf_ktime_get_ns(),
-        .data_len = req->__data_len
-    };
-    start.update(&key, &start_req);
-    return 0;
-}
-
 // output
 static int __trace_req_completion(void *ctx, struct hash_key key)
 {
@@ -207,8 +184,6 @@ static int __trace_req_completion(void *ctx, struct hash_key key)
     valp = infobyreq.lookup(&key);
     if (valp == 0) {
         return 0;
-        // data.name[0] = '?';
-        // data.name[1] = 0;
     } else {
         data.pid = valp->pid;
         bpf_probe_read_kernel(&data.name, sizeof(data.name), valp->name);
@@ -221,7 +196,6 @@ static int __trace_req_completion(void *ctx, struct hash_key key)
     data.rwflag = key.rwflag;
 
     events.perf_submit(ctx, &data, sizeof(data));
-    start.delete(&key);
     infobyreq.delete(&key);
 
     return 0;
