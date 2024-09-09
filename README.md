@@ -102,7 +102,7 @@ Do remember to install the python package dependencies for plotting.
 
 ## Run database experiments
 
-You need root / sudo to make `epbf`, `smartctl`, and some more tools work.
+You need root / sudo to make `bcc`, `smartctl`, and some more tools work.
 
 All these experiments have a similar file output.
 The output will have the format of `<prefix>-<suffix>.log`, where `<prefix>` has the format

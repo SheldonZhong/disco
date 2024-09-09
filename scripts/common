@@ -54,16 +54,27 @@ copy_log()
   fi
 }
 
+child_pid_of()
+{
+  local lpid=$1
+
+  local pid=$(ps -ax -o ppid,pid --no-headers |
+      sed -r 's/^ +//g;s/ +/ /g' |
+      grep "^$lpid" | cut -f 2 -d " ");
+
+  echo $pid
+}
+
 biosnoop_wrapped()
 {
-  sudo ${BIOSNOOP_EXE} > ${bio} &
-  local bio_pid=$!
+  { sudo ${BIOSNOOP_EXE} --disk ${drive} > ${bio}; } &
+  local bio_pid=$(child_pid_of $!)
+  trap "sudo kill -SIGINT ${bio_pid}" EXIT
 
-  sleep 3
+  # manually block to wait ebpf tools be ready
+  sleep 5
 
   "$@"
-
-  sudo kill -SIGKILL ${bio_pid}
 }
 
 smartctl_wrapped()
@@ -161,7 +172,7 @@ prep()
   set_drive
 }
 
-BIOSNOOP_EXE=/usr/share/bcc/tools/biosnoop
+BIOSNOOP_EXE=$(dirname "$0")/biosnoop.py
 
 if [ ! -f "$BIOSNOOP_EXE" ]; then
   echo ${BIOSNOOP_EXE} does not exist. Follow the instruction to build it from source
