@@ -2366,7 +2366,7 @@ remix_open_at(const int dfd, const u64 seq, const u32 nr_runs)
   last_key->klen = remix->meta.last_key_len;
   remix->last_key = last_key;
 
-  const bool r = bt_init(fd, &remix->meta.btmeta, &remix->bt, true);
+  const bool r = bt_init(fd, &remix->meta.btmeta, &remix->bt, false);
   if (!r) {
     free(first_key);
     free(last_key);
