@@ -15,5 +15,21 @@ load_exp()
 
 prep "$@"
 
+if [ -d ${sys[1]} ]; then
+  if [ "$(ls -A ${sys[1]})" ]; then
+    echo "Loading experiments are supposed to run on an empty folder."
+    read -p  "${sys[1]} is not empty, do you want to continue [N/y]?" yesno
+
+    case $yesno in
+    [Yy]*)
+      ;;
+    *)
+      echo Exiting
+      exit
+      ;;
+    esac
+  fi
+fi
+
 load_exp
 
