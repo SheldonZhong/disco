@@ -69,12 +69,14 @@ biosnoop_wrapped()
 {
   { sudo ${BIOSNOOP_EXE} --disk ${drive} > ${bio}; } &
   local bio_pid=$(child_pid_of $!)
-  trap "sudo kill -SIGINT ${bio_pid}" EXIT
+  trap "sudo kill -SIGINT ${bio_pid}" SIGINT
 
   # manually block to wait ebpf tools be ready
   sleep 5
 
   "$@"
+
+  sudo kill -SIGINT ${bio_pid}
 }
 
 smartctl_wrapped()
