@@ -39,8 +39,8 @@ tot_read=$(python -c "print(($read_diff if $read_diff >= 0 else $read_diff + 2 *
 tot_write_bytes=$(python -c "print($tot_write * 512)")
 tot_read_bytes=$(python -c "print($tot_read * 512)")
 
-echo write I/O: $tot_write
-echo read I/O: $tot_read
+echo Write I/O: $tot_write
+echo Read I/O: $tot_read
 
-echo write bytes: $tot_write_bytes
-echo read bytes: $tot_read_bytes
+echo Write bytes: $tot_write_bytes
+echo Read bytes: $tot_read_bytes

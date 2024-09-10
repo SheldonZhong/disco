@@ -27,8 +27,8 @@ sread_start=$(grep -w ${drive} ${base}-start-smart.log | awk '{print $6}')
 swrite_diff=$((${write_end} - ${write_start}))
 sread_diff=$((${read_end} - ${read_start}))
 
-echo total write: $write_diff
-echo total read: $read_diff
+echo Write: $write_diff
+echo Read: $read_diff
 
-echo total sector write: $swrite_diff
-echo total sector read: $sread_diff
+echo Sector write: $swrite_diff
+echo Sector read: $sread_diff
