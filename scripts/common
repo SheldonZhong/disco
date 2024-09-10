@@ -143,10 +143,10 @@ make_executables()
 {
   case ${db} in
     rdb*)
-      make -B ROCKSDB=y dbtest1.out ycsbtest.out
+      make -B ROCKSDB=y dbtest.out ycsbtest.out
       ;;
     *)
-      make -B dbtest1.out ycsbtest.out
+      make -B dbtest.out ycsbtest.out
       ;;
   esac
 }
@@ -158,7 +158,7 @@ warmup()
   prepare_log warmup
 
   local nscan=0
-  smartctl_wrapped ./dbtest1.out api ${sys[@]} \
+  smartctl_wrapped ./dbtest.out api ${sys[@]} \
     rgen uniform 0 ${maxk} pass  4 1 163840 400 1   3  n ${klen} ${nscan} \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
 }

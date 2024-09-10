@@ -43,7 +43,7 @@ all : bin bench
 FLG-msstio.out += -DRCACHE_TRACE
 
 #### bench
-TGT-bench += dbtest1 ycsbtest
+TGT-bench += dbtest ycsbtest
 .PHONY : bench
 bench : $(addsuffix .out,$(TGT-bench))
 

@@ -116,7 +116,7 @@ The `<suffix>` could be
 - end-smart: the smartctl output after the experiment
 - out: the stdout during the experiment
 - err: the stderr during the experiment
-- bio: the I/O traces using from biosnoop
+- bio: the aggregate I/O traces using bcc
 - <empty>: the log of the database
 ```
 We will use some scripts to parse, extract, and plot the output.
