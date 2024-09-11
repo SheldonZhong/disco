@@ -32,6 +32,16 @@ range_read_exp()
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
 }
 
+range_read_io_exp()
+{
+  prepare_log random-read-io
+
+  local nscan=0
+  iotrace_wrapped ./dbtest.out api ${sys[@]} \
+    rgen uniform 0 ${maxk} pass  1 0 600 5  1   3  n ${klen} ${nscan} \
+    > >(tee ${sout}) 2> >(tee ${serr} >&2)
+}
+
 point_read_exp()
 {
   prepare_log random-read-probe
@@ -49,6 +59,8 @@ warmup
 range_read_exp
 
 point_read_exp
+
+range_read_io_exp
 
 zipfian_range_read_exp
 
