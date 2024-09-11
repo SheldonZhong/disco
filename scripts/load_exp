@@ -11,6 +11,8 @@ load_exp()
   iotrace_wrapped ./dbtest.out api ${sys[@]} \
     rgen shuffle 0 ${maxk} pass  1 1 $((${fill} / 200)) 200 0   3  s ${klen} ${vlen} \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
+
+  parse_dbtest_csv
 }
 
 prep "$@"
@@ -32,4 +34,6 @@ if [ -d ${sys[1]} ]; then
 fi
 
 load_exp
+
+collect_log load
 

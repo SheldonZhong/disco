@@ -36,6 +36,7 @@ case $rgen in
     ;;
 esac
 
+thread_col=$(($pass_col + 1))
 klen_col=$(($pass_col + 8))
 vlen_col=$(($pass_col + 9))
 num_ops_col=$(($pass_col + 11))
@@ -43,6 +44,7 @@ num_ops_col=$(($pass_col + 11))
 
 klen=$(echo ${data_line} | awk -v klen_col="$klen_col" '{print $klen_col}')
 vlen=$(echo ${data_line} | awk -v vlen_col="$vlen_col" '{print $vlen_col}')
+thread=$(echo ${data_line} | awk -v thread_col="$thread_col" '{print $thread_col}')
 num_ops=$(echo ${data_line} | awk -v num_ops_col="$num_ops_col" '{print $num_ops_col}')
 nsec=$(echo ${data_line} | awk '{print $2}')
 sysname=$(echo ${data_line} | awk '{print $4}')
@@ -55,6 +57,6 @@ ops=$(echo "scale=5; $num_ops / $nsec" | bc)
 
 io_results=$($(dirname "$0")/extract_io.sh $2 $3)
 
-echo -n $sysname,$mem,$klen,$vlen,$nkv,$rgen,$nsec,$num_ops,$ops
+echo -n $sysname,$mem,$klen,$vlen,$thread,$nkv,$rgen,$nsec,$num_ops,$ops
 echo $io_results
 

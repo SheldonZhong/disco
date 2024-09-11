@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+
+if [ "$#" -ne 2 ]; then
+  echo "${0} <full/dummy/discodb/remixdb/rdb> <mount_point>"
+  exit
+fi
+
+case ${1} in
+  rdb*)
+    sys=rdb-rw
+    ;;
+  *)
+    sys=${1}
+    ;;
+esac
+
+nkv=1010580539
+klen=16
+vlen=120
+
+systemd-run --user --scope -p MemoryMax=64G \
+  $(dirname "$0")/load_exp $1 $nkv $klen $vlen $2 64G
+
+rm -rf $2/$1
+
+systemd-run --user --scope -p MemoryMax=32G \
+$(dirname "$0")/load_exp $1 $nkv $klen $vlen $2 32G
+
+rm -rf $2/$1
+
+systemd-run --user --scope -p MemoryMax=16G \
+$(dirname "$0")/load_exp $1 $nkv $klen $vlen $2 16G
+
+# not deleting the db
+
+systemd-run --user --scope -p MemoryMax=16G \
+$(dirname "$0")/read_bench $1 $nkv $klen $vlen $2 16G
+
+systemd-run --user --scope -p MemoryMax=32G \
+$(dirname "$0")/read_bench $1 $nkv $klen $vlen $2 32G
+
+systemd-run --user --scope -p MemoryMax=64G \
+$(dirname "$0")/read_bench $1 $nkv $klen $vlen $2 64G
+
+systemd-run --user --scope -p MemoryMax=16G \
+$(dirname "$0")/ycsb $1 $nkv $klen $vlen $2 16G
+

@@ -61,3 +61,4 @@ warmup
 
 ycsb
 
+collect_log ycsb

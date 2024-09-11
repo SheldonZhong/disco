@@ -10,6 +10,8 @@ zipfian_range_read_exp()
   iotrace_wrapped ./dbtest.out api ${sys[@]} \
     rgen unizipf 0 ${maxk} 1000 pass  4 0 600 10  1   3  n ${klen} ${nscan} \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
+
+  parse_dbtest_csv
 }
 
 zipfian_point_read_exp()
@@ -20,6 +22,8 @@ zipfian_point_read_exp()
   iotrace_wrapped ./dbtest.out api ${sys[@]} \
     rgen unizipf 0 ${maxk} 1000 pass  4 0 600 10  1   3  p ${klen} ${nscan} \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
+
+  parse_dbtest_csv
 }
 
 range_read_exp()
@@ -30,6 +34,8 @@ range_read_exp()
   iotrace_wrapped ./dbtest.out api ${sys[@]} \
     rgen uniform 0 ${maxk} pass  4 0 600 5  1   3  n ${klen} ${nscan} \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
+
+  parse_dbtest_csv
 }
 
 range_read_io_exp()
@@ -40,6 +46,8 @@ range_read_io_exp()
   iotrace_wrapped ./dbtest.out api ${sys[@]} \
     rgen uniform 0 ${maxk} pass  1 0 600 5  1   3  n ${klen} ${nscan} \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
+
+  parse_dbtest_csv
 }
 
 point_read_exp()
@@ -50,6 +58,8 @@ point_read_exp()
   iotrace_wrapped ./dbtest.out api ${sys[@]} \
     rgen uniform 0 ${maxk} pass  4 0 600 5  1   3  p ${klen} ${nscan} \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
+
+  parse_dbtest_csv
 }
 
 prep "$@"
@@ -65,4 +75,6 @@ range_read_io_exp
 zipfian_range_read_exp
 
 zipfian_point_read_exp
+
+collect_log read
 
