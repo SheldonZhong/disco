@@ -1431,6 +1431,7 @@ bt_iter_match(struct bt_iter * const iter, const struct kref * const key)
   const bool match = bt_page_seek_leaf(iter, key);
   btbf_log_metrics(bt, might_exist, match);
   blbf_log_metrics(bt, might_exist1, match);
+  bt_iter_park(iter);
   return match;
 }
 
