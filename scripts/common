@@ -128,14 +128,11 @@ set_args()
   full)
     sys=('full' "$basedir/full")
     ;;
-  rdb-rw)
+  rdb)
     sys=('rdb' "$basedir/rdb" '1')
     ;;
-  rdb-ro)
-    sys=('rdb' "$basedir/rdb" '0')
-    ;;
   *)
-    echo "sys: remixdb discodb rdb-rw rdb-ro"
+    echo "sys: full dummy remixdb discodb rdb"
     exit 0
     ;;
   esac

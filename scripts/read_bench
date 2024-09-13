@@ -64,6 +64,10 @@ point_read_exp()
 
 prep "$@"
 
+if [ ${sys[0]} = 'rdb' ]; then
+  sys[2]='0'
+fi
+
 warmup
 
 range_read_exp

@@ -136,7 +136,7 @@ To run a loading experiment
 # RemixDB
 ./scripts/load_exp remixdb 1010580539 16 120 <mount_point>
 # RocksDB
-./scripts/load_exp rdb-rw 1010580539 16 120 <mount_point>
+./scripts/load_exp rdb 1010580539 16 120 <mount_point>
 ```
 
 ### Read experiments
@@ -152,7 +152,7 @@ skewed range query, and skewed point query.
 # RemixDB
 ./scripts/read_bench remixdb 1010580539 16 120 <mount_point>
 # RocksDB
-./scripts/read_bench rdb-ro  1010580539 16 120 <mount_point>
+./scripts/read_bench rdb  1010580539 16 120 <mount_point>
 ```
 
 Note here that we open RocksDB in read-only mode to make sure all systems are evaluated equally.
@@ -168,7 +168,7 @@ It will first warmup the page cache then run the YCSB workloads from A to F.
 # RemixDB
 ./scripts/ycsb remixdb 1010580539 16 120 <mount_point>
 # RocksDB
-./scripts/ycsb rdb-rw  1010580539 16 120 <mount_point>
+./scripts/ycsb rdb  1010580539 16 120 <mount_point>
 ```
 
 ### Run experiments with different memory budgets
@@ -180,7 +180,7 @@ It then moves all `*.log` files into a directory.
 For example
 ```
 ./scripts/run_cgroups ./scripts/read_bench discodb 1010580539 16 120 <mount_point>
-./scripts/run_cgroups ./scripts/read_bench rdb-ro 1010580539 16 120 <mount_point>
+./scripts/run_cgroups ./scripts/read_bench rdb 1010580539 16 120 <mount_point>
 ```
 
 *Note*: since the loading experiments and YCSB write to the database.
