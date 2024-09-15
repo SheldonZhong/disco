@@ -2,6 +2,15 @@
 
 source $(dirname "$0")/common
 
+parse_ycsbtest_csv()
+{
+  if [ -z ${mem_limit} ]; then
+    return
+  fi
+
+  $(dirname "$0")/extract_ycsbtest.sh ${mem_limit} ${log_fn}.log
+}
+
 ycsb()
 {
 
@@ -11,6 +20,7 @@ ycsb()
   iotrace_wrapped ./ycsbtest.out api ${sys[@]} \
     rgen unizipf 0 ${maxk} 1000  pass  4 0 10 20 1 7 50  0 50   0  ${klen} ${vlen} 10 \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
+  parse_ycsbtest_csv
 
   prepare_log YCSB-B
   echo Workload B, 95% get 5% set
@@ -18,6 +28,7 @@ ycsb()
   iotrace_wrapped ./ycsbtest.out api ${sys[@]} \
     rgen unizipf 0 ${maxk} 1000  pass  4 0 10 20 1 7 5  0 95   0  ${klen} ${vlen} 10 \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
+  parse_ycsbtest_csv
 
   prepare_log YCSB-C
   echo Workload C 100% get
@@ -25,6 +36,7 @@ ycsb()
   iotrace_wrapped ./ycsbtest.out api ${sys[@]} \
     rgen unizipf 0 ${maxk} 1000  pass  4 0 10 20 1 7 0  0 100  0  ${klen} ${vlen} 10 \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
+  parse_ycsbtest_csv
 
   prepare_log YCSB-D
   echo Workload D latest 5% set 95% get
@@ -32,6 +44,7 @@ ycsb()
   iotrace_wrapped ./ycsbtest.out api ${sys[@]} \
     rgen latest 1000  pass  4 0 10 20 1 7 5  0 95  0  ${klen} ${vlen} 10 \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
+  parse_ycsbtest_csv
 
   prepare_log range-warmup
   echo Workload debug 100% scan
@@ -39,6 +52,7 @@ ycsb()
   iotrace_wrapped ./ycsbtest.out api ${sys[@]} \
     rgen unizipf 0 ${maxk} 1000  pass  4 0 10 20 1 7 0  0 0 100 ${klen} ${vlen} 50 \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
+  parse_ycsbtest_csv
 
   prepare_log YCSB-E
   echo Workload E 5% set 95% scan
@@ -46,6 +60,7 @@ ycsb()
   iotrace_wrapped ./ycsbtest.out api ${sys[@]} \
     rgen unizipf 0 ${maxk} 1000  pass  4 0 10 20 1 7 5  0 0 95  ${klen} ${vlen} 50 \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
+  parse_ycsbtest_csv
 
   prepare_log YCSB-F
   echo Workload F read-modify-update 50% get 50% RMU
@@ -53,6 +68,7 @@ ycsb()
   iotrace_wrapped ./ycsbtest.out api ${sys[@]} \
     rgen unizipf 0 ${maxk} 1000  pass  4 0 10 20 1 7 0 50 50 0  ${klen} ${vlen} 10 \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
+  parse_ycsbtest_csv
 }
 
 prep "$@"
