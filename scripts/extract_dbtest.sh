@@ -57,6 +57,6 @@ ops=$(echo "scale=5; $num_ops / $nsec" | bc)
 
 io_results=$($(dirname "$0")/extract_io.sh $2 $3)
 
-echo -n $sysname,$mem,$klen,$vlen,$thread,$nkv,$rgen,$nsec,$num_ops,$ops
-echo $io_results
+echo -n $sysname,$mem,$klen,$vlen,$thread,$nkv,$rgen,$nsec,$num_ops,$ops,
+echo "$io_results"
 
