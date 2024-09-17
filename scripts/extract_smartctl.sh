@@ -18,16 +18,32 @@ if [ -z "$write_end" ]; then
   write_end=$(grep "Blocks received from initiator" ${base}-end-smart.log | awk '{print $6}')
 fi
 
+if [ -z "$write_end" ]; then
+  write_end=$(grep "Host Write Commands" ${base}-end-smart.log | awk '{print $4}' | tr -d ",")
+fi
+
 if [ -z "$write_start" ]; then
   write_start=$(grep "Blocks received from initiator" ${base}-start-smart.log | awk '{print $6}')
+fi
+
+if [ -z "$write_start" ]; then
+  write_start=$(grep "Host Write Commands" ${base}-start-smart.log | awk '{print $4}' | tr -d ",")
 fi
 
 if [ -z "$read_end" ]; then
   read_end=$(grep "Blocks sent to initiator" ${base}-end-smart.log | awk '{print $6}')
 fi
 
+if [ -z "$read_end" ]; then
+  read_end=$(grep "Host Read Commands" ${base}-end-smart.log | awk '{print $4}' | tr -d ",")
+fi
+
 if [ -z "$read_start" ]; then
   read_start=$(grep "Blocks sent to initiator" ${base}-start-smart.log | awk '{print $6}')
+fi
+
+if [ -z "$read_start" ]; then
+  read_start=$(grep "Host Read Commands" ${base}-start-smart.log | awk '{print $4}' | tr -d ",")
 fi
 
 write_diff=$((${write_end} - ${write_start}))
