@@ -8,7 +8,7 @@ parse_ycsbtest_csv()
     return
   fi
 
-  $(dirname "$0")/extract_ycsbtest.sh ${mem_limit} ${log_fn}.log
+  $(dirname "$0")/extract_ycsbtest.sh ${mem_limit} ${log_fn}.log > ${log_fn}.csv
 }
 
 ycsb()
