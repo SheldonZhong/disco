@@ -333,7 +333,7 @@ btenc_finish(struct btenc * const enc, struct btmeta * const out)
   debug_assert((nr_all == 0) == (enc->last_page_size == 0));
 
   out->depth = depth;
-  out->nr_leaf = (u16)nr_leaf;
+  out->nr_leaf = nr_leaf;
   out->root = nr_all ? (nr_all - 1) : 0;
   out->nr_kvs = enc->nr_kvs;
   out->root_size = enc->last_page_size;
@@ -867,7 +867,7 @@ bt_page_seek_internal(const u8 * const page, const struct kref * const key)
 }
 
 // return a leaf node id; return 0 when nr_leaf == 0
-  static u16
+  static u32
 bt_seek_pageid(const struct bt * const bt, const struct kref * const key)
 {
   u32 pageid = bt->meta.root;
@@ -891,11 +891,11 @@ bt_seek_pageid(const struct bt * const bt, const struct kref * const key)
   }
 
   debug_assert(pageid < bt->meta.nr_leaf || bt->meta.nr_leaf == 0);
-  return (u16)pageid;
+  return pageid;
 }
 
 struct bt_ptr {
-  u16 pageid; // xth 4kb-block in the table
+  u32 pageid; // xth 4kb-block in the table
   u16 keyid; // xth key in the block // MAX == invalid
 };
 
@@ -903,7 +903,7 @@ struct bt_iter { // 32 bytes
   struct bt * bt;
   u8 rank;
   u8 padding;
-  u16 nr_leaf;
+  u32 nr_leaf;
   struct bt_ptr ptr;
   u32 klen;
   u32 vlen;
@@ -2449,7 +2449,7 @@ remix_dump(struct remix * const remix, const char * const filename)
 
     const struct bt_ptr * const ptrs = (typeof(ptrs))vptr;
     for (u32 i = 0; i < remix->nr_runs; i++)
-      fprintf(fout, " %hu:%hu", ptrs[i].pageid, ptrs[i].keyid);
+      fprintf(fout, " %u:%hu", ptrs[i].pageid, ptrs[i].keyid);
     vptr += (sizeof(struct bt_ptr) * remix->nr_runs);
 
     for (u32 i = 0; i < nkeys; i++)
