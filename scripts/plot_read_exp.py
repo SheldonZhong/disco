@@ -6,6 +6,7 @@ import matplotlib.pyplot as mpl
 from matplotlib import ticker
 import numpy as np
 import sys
+import os
 
 # common
 label_mappings = {
@@ -106,6 +107,7 @@ def plot_read_io(wdf):
     return ax, fig
 
 if __name__ == '__main__':
+    os.makedirs("figs", exist_ok=True)
 
     if len(sys.argv) < 2:
         print(sys.argv[0], "<read_exp_csv>")
@@ -117,23 +119,23 @@ if __name__ == '__main__':
     ax, fig = plot_read(df[(df['rgen'] == 'uniform') & (df['thread'] == 4) & (df['verb'] == 'seeknext')])
     # ax.set_yticks(np.arange(0, 50, 10))
     # ax.set_ylim((0, 45))
-    fig.savefig("cr/dbbench_uniform_read_thruput.pdf", bbox_inches="tight", pad_inches=0.03, format='pdf')
+    fig.savefig("figs/dbbench_uniform_read_thruput.pdf", bbox_inches="tight", pad_inches=0.03, format='pdf')
 
 
     ax, fig = plot_read(df[(df['rgen'] == 'unizipf') & (df['thread'] == 4) & (df['verb'] == 'seeknext')])
     # ax.set_yticks(np.arange(0, 60, ))
     # ax.set_ylim((0, 220))
-    fig.savefig("cr/dbbench_unizipf_read_thruput.pdf", bbox_inches="tight", pad_inches=0.03, format='pdf')
+    fig.savefig("figs/dbbench_unizipf_read_thruput.pdf", bbox_inches="tight", pad_inches=0.03, format='pdf')
 
 
     ax, fig = plot_read(df[(df['rgen'] == 'uniform') & (df['thread'] == 4) & (df['verb'] == 'pro')])
     # ax.set_yticks(np.arange(0, 50, 10))
     # ax.set_ylim((0, 48))
-    fig.savefig("cr/dbbench_uniform_point_read_thruput.pdf", bbox_inches="tight", pad_inches=0.03, format='pdf')
+    fig.savefig("figs/dbbench_uniform_point_read_thruput.pdf", bbox_inches="tight", pad_inches=0.03, format='pdf')
 
 
     ax, fig = plot_read_io(df[(df['rgen'] == 'uniform') & (df['thread'] == 1) & (df['verb'] == 'seeknext')])
     # ax.set_yticks(np.arange(0, 30, 5))
     # ax.set_ylim(0, 29)
-    fig.savefig("cr/dbbench_uniform_read_io.pdf", bbox_inches="tight", pad_inches=0.03, format='pdf')
+    fig.savefig("figs/dbbench_uniform_read_io.pdf", bbox_inches="tight", pad_inches=0.03, format='pdf')
 
