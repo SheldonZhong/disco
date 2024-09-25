@@ -32,6 +32,8 @@ marker_map = {
     'remix' : '^',
 }
 
+os.makedirs("figs", exist_ok=True)
+
 folder_names = []
 folder_names.append(args.result_prefix)
 
@@ -136,7 +138,7 @@ ax.legend()
 ax.grid(ls='--', which='both', axis='y')
 ax.grid(ls='--', which='major', axis='x')
 
-fig.savefig("intro-exp.pdf", bbox_inches="tight", pad_inches=0.03, format='pdf')
+fig.savefig("figs/intro-exp.pdf", bbox_inches="tight", pad_inches=0.03, format='pdf')
 
 
 wdf = df[df['nway'] == 8]
@@ -318,6 +320,6 @@ ax.legend()
 ax.grid(ls='--', which='both', axis='y')
 ax.grid(ls='--', which='major', axis='x')
 
-fig.savefig("eval_probe_8_mixed.pdf", bbox_inches="tight",
+fig.savefig("figs/eval_probe_8_mixed.pdf", bbox_inches="tight",
              pad_inches=0.03, format='pdf')
 
