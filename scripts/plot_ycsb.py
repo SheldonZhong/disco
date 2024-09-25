@@ -107,11 +107,11 @@ if __name__ == '__main__':
     os.makedirs("figs", exist_ok=True)
 
     if len(sys.argv) < 2:
-        print(sys.argv[0], "<read_exp_csv>")
+        print(sys.argv[0], "<ycsb_csv>")
         sys.exit(1)
 
     df = pd.read_csv(sys.argv[1], names=headers)
 
 
     ax, fig = plot_ycsb(df)
-    fig.savefig("cr/ycsb_16g.pdf", bbox_inches="tight", pad_inches=0.03, format='pdf')
+    fig.savefig("figs/ycsb_16g.pdf", bbox_inches="tight", pad_inches=0.03, format='pdf')
