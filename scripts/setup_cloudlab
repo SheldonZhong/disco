@@ -27,11 +27,11 @@ git checkout v0.30.0
 git submodule update
 mkdir build; cd build
 cmake ..
-make -j
+make -j$(nproc)
 sudo make install
 cmake -DPYTHON_CMD=python3 .. # build python3 binding
 pushd src/python/
-make -j
+make -j$(nproc)
 sudo make install
 popd
 
@@ -40,7 +40,7 @@ cd
 git clone https://github.com/facebook/rocksdb.git
 cd ~/rocksdb
 git checkout v8.10.0
-make -j static_lib
+make -j$(nproc) static_lib
 cp ./librocksdb.a ~/disco
 mkdir -p ~/disco/include/rocksdb
 cp ~/rocksdb/include/rocksdb/c.h ~/disco/include/rocksdb
