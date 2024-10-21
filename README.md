@@ -119,9 +119,97 @@ The `<suffix>` could be
 - bio: the aggregate I/O traces using bcc
 - <empty>: the log of the database
 ```
-We will use some scripts to parse, extract, and plot the output.
+The script will also generate a CSV file having the prefix and ending with `.csv` that
+is used by the python scripts to plot the figures.
 
-### Loading experiments
+For the loading experiments and read experiments, the names and meanings of the columns of the CSV files are:
+- sysname: the name of the system, e.g., full/dummy/discodb/remixdb/rdb
+- mem: the memory limit that the experiment runs with
+- klen: the length of the keys used in this experiment
+- vlen: the length of the values used in this experiment
+- thread: the number of threads this experiment runs with
+- nkv: the total number of key-value pairs in the system
+- rgen: the random number generator used for the distributions of the operations, e.g., uniform/unizipf/shuffle
+- verb: the name of the operations being benchmarked in the experiment, e.g., set/pro/seeknext
+- nsec: the number of seconds spent on this experiment
+- num\_ops: the number of operations performed during this experiment
+- ops: operations per second, calculated by dividing the num\_ops by nsec
+- bio\_write\_io: the write I/O count from bio
+- bio\_read\_io: the read I/O count from bio
+- bio\_write\_bytes: the write bytes from bio
+- bio\_read\_bytes: the read bytes from bio
+- stats\_write\_io: the write I/O count from disk stats
+- stats\_read\_io: the read I/O count from disk stats
+- stats\_write\_sectors: the write sector counts from disk stats
+- stats\_read\_sectors: the read sector counts from disk stats
+- sctl\_write\_io: the write I/O count from smartctl
+- sctl\_read\_io: the read I/O count from smartctl
+- sctl\_write\_bytes: the write bytes from smartctl
+- sctl\_read\_bytes: the read bytes from smartctl
+
+For the YCSB experiments, the CSV columns are:
+- sysname:
+- workload: the name of the YCSB workload for this experiment
+- mem:
+- klen:
+- vlen:
+- rgen:
+- nsec:
+- nops:
+- ops:
+- nset: the number of update operations in this experiment
+- nupd: the number of merge operations in this experiment
+- nget: the number of read operations in this experiment
+- nscan: the number of scan and next operation in this experiment
+
+We will later use scripts to parse, extract, and plot the output.
+
+### Use one script to repeat the experiments and reproduce the plots in the paper
+
+```
+# Full-Index
+./scripts/eval full <mount_point>
+# No-Index
+./scripts/eval dummy <mount_point>
+# DiscoDB
+./scripts/eval discodb <mount_point>
+# RemixDB
+./scripts/eval remixdb <mount_point>
+# RocksDB
+./scripts/eval rocksdb <mount_point>
+```
+
+For each system, it will create following folders (take DiscoDB as example):
+- load-discodb-16G
+- load-discodb-32G
+- load-discodb-64G
+- read-discodb-16G
+- read-discodb-32G
+- read-discodb-64G
+- ycsb-discodb-16G
+
+#### Plotting the results
+
+Once the experiments of all five systems are done, we could gather the CSV results by
+```
+cat load*/*.csv > load_exp.csv
+cat read*/*.csv > read_exp.csv
+cat ycsb*/*.csv > ycsb_exp.csv
+```
+Note: to accelerate reproducing the experiments, it is possible to run the 5 systems in 5 different machines and then manually collect the results in one machine.
+
+After the results are gathered, we can plot them by
+```
+./script/plot_load_exp.py ./load_exp.csv
+./script/plot_read_exp.py ./read_exp.csv
+./script/plot_ycsb.py ./ycsb_exp.csv
+```
+
+The scripts will save the vector plots in PDF format in a folder named `figs`.
+
+### Run individual experiments
+
+#### Loading experiments
 
 `./scripts/load_exp` loads a database.
 It will write the specified number of keys in shuffled order.
@@ -139,7 +227,7 @@ To run a loading experiment
 ./scripts/load_exp rdb 1010580539 16 120 <mount_point>
 ```
 
-### Read experiments
+#### Read experiments
 
 `./scripts/read_bench` runs the read experiments.
 It will first warm up the page cache then perform the read experiments.
@@ -157,7 +245,7 @@ skewed range query, and skewed point query.
 
 Note here that we open RocksDB in read-only mode to make sure all systems are evaluated equally.
 
-### YCSB
+#### YCSB
 
 `./scripts/ycsb` runs the YCSB experiments.
 It will first warmup the page cache then run the YCSB workloads from A to F.
@@ -171,7 +259,7 @@ It will first warmup the page cache then run the YCSB workloads from A to F.
 ./scripts/ycsb rdb  1010580539 16 120 <mount_point>
 ```
 
-### Run experiments with different memory budgets
+#### Run experiments with different memory budgets
 
 `./scripts/run_cgroups` could be used to run experiments under different memory budgets.
 It will run whatever is given to the argument with 16G, 32G, and 64G memory budgets.
