@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-if [ "$#" -ne 2 ]; then
-  echo "${0} <full/dummy/discodb/remixdb/rdb> <mount_point>"
+if [ "$#" -ne 3 ]; then
+  echo "${0} <full/dummy/discodb/remixdb/rdb> <mount_point> <chkpt_dir>"
   exit
 fi
 
@@ -11,6 +11,9 @@ vlen=120
 
 systemd-run --user --scope -p MemoryMax=64G \
   $(dirname "$0")/load_exp $1 $nkv $klen $vlen $2 64G
+
+# save a checkpoint of a freshly loaded database
+cp -r $2/$1 $3
 
 rm -rf $2/$1
 
@@ -34,5 +37,5 @@ systemd-run --user --scope -p MemoryMax=64G \
   $(dirname "$0")/read_bench $1 $nkv $klen $vlen $2 64G
 
 systemd-run --user --scope -p MemoryMax=16G \
-  $(dirname "$0")/ycsb $1 $nkv $klen $vlen $2 16G
+  $(dirname "$0")/ycsb $1 $nkv $klen $vlen $2 16G $3
 

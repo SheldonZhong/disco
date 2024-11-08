@@ -11,46 +11,57 @@ parse_ycsbtest_csv()
   $(dirname "$0")/extract_ycsbtest.sh ${mem_limit} ${log_fn}.log > ${log_fn}.csv
 }
 
-ycsb()
+ycsb_a()
 {
-
   prepare_log YCSB-A
   echo Workload A, 50% get 50% set
 
   iotrace_wrapped ./ycsbtest.out api ${sys[@]} \
-    rgen unizipf 0 ${maxk} 1000  pass  4 0 10 20 1 7 50  0 50   0  ${klen} ${vlen} 10 \
+    rgen unizipf 0 ${maxk} 1000  pass  4 0 100 20 1 7 50  0 50   0  ${klen} ${vlen} 10 \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
   parse_ycsbtest_csv
+}
 
+ycsb_b()
+{
   prepare_log YCSB-B
   echo Workload B, 95% get 5% set
 
   iotrace_wrapped ./ycsbtest.out api ${sys[@]} \
-    rgen unizipf 0 ${maxk} 1000  pass  4 0 10 20 1 7 5  0 95   0  ${klen} ${vlen} 10 \
+    rgen unizipf 0 ${maxk} 1000  pass  4 0 100 20 1 7 5  0 95   0  ${klen} ${vlen} 10 \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
   parse_ycsbtest_csv
+}
 
+ycsb_c()
+{
   prepare_log YCSB-C
   echo Workload C 100% get
 
   iotrace_wrapped ./ycsbtest.out api ${sys[@]} \
-    rgen unizipf 0 ${maxk} 1000  pass  4 0 10 20 1 7 0  0 100  0  ${klen} ${vlen} 10 \
+    rgen unizipf 0 ${maxk} 1000  pass  4 0 100 20 1 7 0  0 100  0  ${klen} ${vlen} 10 \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
   parse_ycsbtest_csv
+}
 
+ycsb_d()
+{
   prepare_log YCSB-D
   echo Workload D latest 5% set 95% get
 
   iotrace_wrapped ./ycsbtest.out api ${sys[@]} \
-    rgen latest 1000  pass  4 0 10 20 1 7 5  0 95  0  ${klen} ${vlen} 10 \
+    rgen latest 1000  pass  4 0 100 20 1 7 5  0 95  0  ${klen} ${vlen} 10 \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
   parse_ycsbtest_csv
+}
 
+ycsb_e()
+{
   prepare_log range-warmup
   echo Workload debug 100% scan
 
   iotrace_wrapped ./ycsbtest.out api ${sys[@]} \
-    rgen unizipf 0 ${maxk} 1000  pass  4 0 10 20 1 7 0  0 0 100 ${klen} ${vlen} 50 \
+    rgen unizipf 0 ${maxk} 1000  pass  4 0 100 20 1 7 0  0 0 100 ${klen} ${vlen} 50 \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
   parse_ycsbtest_csv
 
@@ -58,23 +69,50 @@ ycsb()
   echo Workload E 5% set 95% scan
 
   iotrace_wrapped ./ycsbtest.out api ${sys[@]} \
-    rgen unizipf 0 ${maxk} 1000  pass  4 0 10 20 1 7 5  0 0 95  ${klen} ${vlen} 50 \
-    > >(tee ${sout}) 2> >(tee ${serr} >&2)
-  parse_ycsbtest_csv
-
-  prepare_log YCSB-F
-  echo Workload F read-modify-update 50% get 50% RMU
-
-  iotrace_wrapped ./ycsbtest.out api ${sys[@]} \
-    rgen unizipf 0 ${maxk} 1000  pass  4 0 10 20 1 7 0 50 50 0  ${klen} ${vlen} 10 \
+    rgen unizipf 0 ${maxk} 1000  pass  4 0 100 20 1 7 5  0 0 95  ${klen} ${vlen} 50 \
     > >(tee ${sout}) 2> >(tee ${serr} >&2)
   parse_ycsbtest_csv
 }
 
+ycsb_f()
+{
+  prepare_log YCSB-F
+  echo Workload F read-modify-update 50% get 50% RMU
+
+  iotrace_wrapped ./ycsbtest.out api ${sys[@]} \
+    rgen unizipf 0 ${maxk} 1000  pass  4 0 100 20 1 7 0 50 50 0  ${klen} ${vlen} 10 \
+    > >(tee ${sout}) 2> >(tee ${serr} >&2)
+  parse_ycsbtest_csv
+}
+
+recover_from_chkpt()
+{
+  rm -rf $basedir/$db
+  cp -r $chkpt_dir/$db $basedir/$db
+}
+
 prep "$@"
 
+recover_from_chkpt
 warmup
+ycsb_c
 
-ycsb
+warmup
+ycsb_a
+
+recover_from_chkpt
+warmup
+ycsb_b
+
+recover_from_chkpt
+warmup
+ycsb_d
+
+recover_from_chkpt
+ycsb_e
+
+recover_from_chkpt
+warmup
+ycsb_f
 
 collect_log ycsb
