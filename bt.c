@@ -5570,7 +5570,12 @@ findex_build_at(const int dfd, struct mbt * const x1)
 
     // when the current key is the same as the previous key
     const bool stale = (prev != NULL) && (kv_match(prev, curr));
-    // don't encode it if this is a stale key
+    if (stale == true) {
+      // don't encode it if this is a stale key
+      miter_skip1(miter);
+      continue;
+    }
+
     const u32 rank = miter_rank(miter);
     debug_assert(rank < MSST_NR_RUNS);
 
