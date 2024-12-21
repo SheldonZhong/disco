@@ -115,6 +115,7 @@ struct btenc {
   u32 max_leaf_pages;
   struct wring * wring;
   struct kv ** anchors; // for encoding internal nodes later
+  u64 anchor_size;
 
   struct bfenc * bfenc;
 
@@ -188,7 +189,8 @@ btenc_create(const int fd, const u32 max_leaf_pages)
 
   enc->max_leaf_pages = max_leaf_pages; // const
   enc->wring = wring_create(fd, PGSZ << 1, 16); // doubled buffer size
-  enc->anchors = calloc(enc->max_leaf_pages * 2, sizeof(enc->anchors[0]));
+  enc->anchors = malloc(64 * sizeof(enc->anchors[0]));
+  enc->anchor_size = 64;
 
   btenc_acquire_buffer(enc);
 
@@ -274,6 +276,13 @@ btenc_append(struct btenc * const enc, const struct kv * const kv,
     struct kv * const anchor = kv_dup_key_prefix_extra(kv, alen, sizeof(u32));
     anchor->vlen = sizeof(u32);
     *(u32 *)kv_vptr(anchor) = enc->nr_pages; // page id
+    if (enc->nr_pages >= enc->anchor_size) {
+      const u64 new_size = enc->anchor_size << 1;
+      struct kv ** new_anchors = realloc(enc->anchors, new_size * sizeof(enc->anchors[0]));
+      debug_assert(new_anchors);
+      enc->anchors = new_anchors;
+      enc->anchor_size = new_size;
+    }
     enc->anchors[enc->nr_pages] = anchor;
   }
 
@@ -307,13 +316,12 @@ btenc_finish(struct btenc * const enc, struct btmeta * const out)
   u16 depth = 0;
   u32 a0 = 0;
   u32 na = nr_leaf; // number of anchors to add
-  struct kv ** anchors = enc->anchors;
 
   while (na > 1) {
     struct kv * const prev = malloc(PGSZ);
     kv_dup2(kv_null(), prev);
     for (u32 i = 0; i < na; i++) {
-      const struct kv * const curr = anchors[a0 + i];
+      const struct kv * const curr = enc->anchors[a0 + i];
       const bool r = btenc_append(enc, curr, prev, true, false);
       // fatal error
       if (!r)
@@ -351,7 +359,7 @@ btenc_destroy(struct btenc * const enc)
     debug_assert(anchors[i]);
     free(anchors[i]);
   }
-  debug_assert(anchors[enc->nr_pages] == NULL);
+  debug_assert(enc->anchor_size >= enc->nr_pages);
   free(anchors);
   free(enc);
 }
