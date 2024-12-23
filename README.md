@@ -1,4 +1,8 @@
 # Disco
+
+This is the repository for paper
+Disco: A Compact Index for LSM-trees.
+
 ## Dependencies
 
 Dependencies for DiscoDB and RemixDB
