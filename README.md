@@ -168,16 +168,18 @@ We will later use scripts to parse, extract, and plot the output.
 
 ```
 # Full-Index
-./scripts/eval full <mount_point>
+./scripts/eval full <mount_point> <checkpoint_path>
 # No-Index
-./scripts/eval dummy <mount_point>
+./scripts/eval dummy <mount_point> <checkpoint_path>
 # DiscoDB
-./scripts/eval discodb <mount_point>
+./scripts/eval discodb <mount_point> <checkpoint_path>
 # RemixDB
-./scripts/eval remixdb <mount_point>
+./scripts/eval remixdb <mount_point> <checkpoint_path>
 # RocksDB
-./scripts/eval rocksdb <mount_point>
+./scripts/eval rocksdb <mount_point> <checkpoint_path>
 ```
+
+In the command above, the `<mount_point>` should be where the systems run on and the `<checkpoint_path>` should be on a different drive that is used to store a backup of a freshly loaded database for later use in YCSB experiments.
 
 For each system, it will create following folders (take DiscoDB as example):
 - load-discodb-16G
@@ -225,6 +227,10 @@ To run a loading experiment
 ./scripts/load_exp remixdb 1010580539 16 120 <mount_point>
 # RocksDB
 ./scripts/load_exp rdb 1010580539 16 120 <mount_point>
+# Full-Index
+./scripts/load_exp full 1010580539 16 120 <mount_point>
+# No-Index
+./scripts/load_exp dummy 1010580539 16 120 <mount_point>
 ```
 
 #### Read experiments
@@ -241,6 +247,10 @@ skewed range query, and skewed point query.
 ./scripts/read_bench remixdb 1010580539 16 120 <mount_point>
 # RocksDB
 ./scripts/read_bench rdb  1010580539 16 120 <mount_point>
+# Full-Index
+./scripts/read_bench full 1010580539 16 120 <mount_point>
+# No-Index
+./scripts/read_bench dummy  1010580539 16 120 <mount_point>
 ```
 
 Note here that we open RocksDB in read-only mode to make sure all systems are evaluated equally.
@@ -252,12 +262,20 @@ It will first warmup the page cache then run the YCSB workloads from A to F.
 
 ```
 # DiscoDB
-./scripts/ycsb discodb 1010580539 16 120 <mount_point>
+./scripts/ycsb discodb 1010580539 16 120 <mount_point> [checkpoint_path]
 # RemixDB
-./scripts/ycsb remixdb 1010580539 16 120 <mount_point>
+./scripts/ycsb remixdb 1010580539 16 120 <mount_point> [checkpoint_path]
 # RocksDB
-./scripts/ycsb rdb  1010580539 16 120 <mount_point>
+./scripts/ycsb rdb  1010580539 16 120 <mount_point> [checkpoint_path]
+# Full-Index
+./scripts/ycsb full 1010580539 16 120 <mount_point> [checkpoint_path]
+# No-Index
+./scripts/ycsb dummy 1010580539 16 120 <mount_point> [checkpoint_path]
 ```
+
+`[checkpoint_path]` for this script is an optional argument.
+*Note*: since the loading experiments and YCSB write to the database,
+the results might be inconsistent if no `[checkpoint_path]` is provided.
 
 #### Run experiments with different memory budgets
 
@@ -270,7 +288,4 @@ For example
 ./scripts/run_cgroups ./scripts/read_bench discodb 1010580539 16 120 <mount_point>
 ./scripts/run_cgroups ./scripts/read_bench rdb 1010580539 16 120 <mount_point>
 ```
-
-*Note*: since the loading experiments and YCSB write to the database.
-The results might be inconsistent if the script is used directly to run those experiments.
 

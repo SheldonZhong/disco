@@ -87,8 +87,10 @@ ycsb_f()
 
 recover_from_chkpt()
 {
-  rm -rf $basedir/$db
-  cp -r $chkpt_dir/$db $basedir/$db
+  if [ -n "${chkpt_dir}" ]; then
+    rm -rf $basedir/$db
+    cp -r $chkpt_dir/$db $basedir/$db
+  fi
 }
 
 prep "$@"
