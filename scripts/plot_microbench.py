@@ -7,6 +7,7 @@ import matplotlib
 matplotlib.rc('pdf', fonttype=42)
 import configparser
 import glob
+import os
 import numpy as np
 
 import argparse
@@ -225,7 +226,7 @@ ax.legend()
 ax.grid(ls='--', which='both', axis='y')
 ax.grid(ls='--', which='major', axis='x')
 
-fig.savefig("eval_seek_8.pdf", bbox_inches="tight",
+fig.savefig("figs/eval_seek_8.pdf", bbox_inches="tight",
              pad_inches=0.03, format='pdf')
 
 
