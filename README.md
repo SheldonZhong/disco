@@ -1,7 +1,7 @@
 # Disco
 
 This is the repository for paper
-Disco: A Compact Index for LSM-trees.
+[Disco: A Compact Index for LSM-trees](https://dl.acm.org/doi/10.1145/3709683).
 
 ## Dependencies
 
