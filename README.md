@@ -77,8 +77,8 @@ There is also a script `./scripts/setup_cloudlab` that does this all,
 assuming you have this repo cloned in `~/disco`.
 
 ## Run micro-benchmark
-We are still working on how to share our dataset files so people can access it anonymously.
-For now, it should work with a plain text file with one key each line, if you have your own dataset.
+This experiment needs an email address dataset that could be downloaded [here](https://zenodo.org/records/14877546?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6IjNiMTMxNDJhLWM5NmUtNDExNy1hZDliLWJjN2NiNGZhM2EzNSIsImRhdGEiOnt9LCJyYW5kb20iOiJkZDA1MjhkZmE3YjcyZGJlMDY2NzZkZjUyMjgwYjVkYyJ9.XqgW4Gw_DtCErOtQTiEXp1Sj-HMAZymxkrRPJfNgOkSnDFxfbtGoKrnngSsUOaH6yy-q6yLw1dex3OZn8msJaQ).
+An script named `microbench` is used to run the experiment.
 `-n <number of keys>` specifies number of keys that the program considers.
 There will eventually be about 75% of the keys actually inserted.
 Table files have internal limitations of 256MB in size.
