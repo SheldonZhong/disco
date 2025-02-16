@@ -11,7 +11,7 @@ Supported on Ubuntu Jammy 22.04 (CloudLab default image)
 
 ```
 apt-get -y install sudo git build-essential cmake clang python3 parallel python-is-python3 \
-  python3-pip libcairo2-dev pkg-config python3-dev smartmontools
+  python3-pip libcairo2-dev pkg-config python3-dev smartmontools xz-utils
 ```
 
 Dependencies for building RocksDB
@@ -78,7 +78,11 @@ assuming you have this repo cloned in `~/disco`.
 
 ## Run micro-benchmark
 This experiment needs an email address dataset that could be downloaded [here](https://zenodo.org/records/14877546?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6IjNiMTMxNDJhLWM5NmUtNDExNy1hZDliLWJjN2NiNGZhM2EzNSIsImRhdGEiOnt9LCJyYW5kb20iOiJkZDA1MjhkZmE3YjcyZGJlMDY2NzZkZjUyMjgwYjVkYyJ9.XqgW4Gw_DtCErOtQTiEXp1Sj-HMAZymxkrRPJfNgOkSnDFxfbtGoKrnngSsUOaH6yy-q6yLw1dex3OZn8msJaQ).
-An script named `microbench` is used to run the experiment.
+You will have to decompress by
+```
+unxz emails-120788344.txt.xz
+```
+A script named `microbench` is used to run the experiment.
 `-n <number of keys>` specifies number of keys that the program considers.
 There will eventually be about 75% of the keys actually inserted.
 Table files have internal limitations of 256MB in size.
@@ -91,7 +95,7 @@ You will have to adjust the number of keys and value lengths accordingly.
                      -r <uniform/zipfian/unizipf>
                      -m <mixed/existing/non-existing>
 
-./scripts/microbench -k <email address key> -n 2393134 -v 120 -r uniform -m mixed -q 100000
+./scripts/microbench -k emails-120788344.txt -n 2393134 -v 120 -r uniform -m mixed -q 100000
 ```
 
 After that it should generate a folder `trace-<timestamp>` and a matching CSV file `trace-<timestamp>.csv`,
