@@ -184,7 +184,7 @@ We will later use scripts to parse, extract, and plot the output.
 # RemixDB
 ./scripts/eval remixdb <mount_point> <checkpoint_path>
 # RocksDB
-./scripts/eval rocksdb <mount_point> <checkpoint_path>
+./scripts/eval rdb <mount_point> <checkpoint_path>
 ```
 
 In the command above, the `<mount_point>` should be where the systems run on and the `<checkpoint_path>` should be on a different drive that is used to store a backup of a freshly loaded database for later use in YCSB experiments.
