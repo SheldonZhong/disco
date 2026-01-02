@@ -9,6 +9,10 @@ Dependencies for DiscoDB and RemixDB
 
 Supported on Ubuntu Jammy 22.04 (CloudLab default image)
 
+We have a script `./scripts/setup_cloudlab` that does this all,
+assuming you have this repo cloned in `~/disco`.
+One can also follow the instructions down here.
+
 ```
 apt-get -y install sudo git build-essential cmake clang python3 parallel python-is-python3 \
   python3-pip libcairo2-dev pkg-config python3-dev smartmontools xz-utils
@@ -73,10 +77,9 @@ cd ~/disco
 pip install -r ./requirements.txt
 ```
 
-There is also a script `./scripts/setup_cloudlab` that does this all,
-assuming you have this repo cloned in `~/disco`.
-
 ## Run micro-benchmark
+This experiment should finish in 10 minutes, assuming `parallel` is available.
+
 This experiment needs an email address dataset that could be downloaded [here](https://zenodo.org/records/14877546?token=eyJhbGciOiJIUzUxMiJ9.eyJpZCI6IjNiMTMxNDJhLWM5NmUtNDExNy1hZDliLWJjN2NiNGZhM2EzNSIsImRhdGEiOnt9LCJyYW5kb20iOiJkZDA1MjhkZmE3YjcyZGJlMDY2NzZkZjUyMjgwYjVkYyJ9.XqgW4Gw_DtCErOtQTiEXp1Sj-HMAZymxkrRPJfNgOkSnDFxfbtGoKrnngSsUOaH6yy-q6yLw1dex3OZn8msJaQ).
 You will have to decompress by
 ```
@@ -109,6 +112,15 @@ This will generate `intro-exp.pdf`, `eval_seek_8.pdf`, and `eval_probe_8_mixed.p
 Do remember to install the python package dependencies for plotting.
 
 ## Run database experiments
+
+These experiments expect to run for relatively long time, depending on the drives you run on.
+For example, the loading experiments might take as long as two hours for some systems.
+We also require that you have a dedicated drive to run the experiments on, i.e.,
+no partitions are created on the drive.
+Without partitions, we can trust the I/O results from smartctl, otherwise the results
+might include I/Os for other activities from other partitinos.
+If your drive has paritions and you are confident that the drive will only be used for the evaluation,
+you might want to manually extract the I/O results before and after experiments using `extract-diskstats.sh`.
 
 You need root / sudo to make `bcc`, `smartctl`, and some more tools work.
 
@@ -174,6 +186,10 @@ We will later use scripts to parse, extract, and plot the output.
 
 ### Use one script to repeat the experiments and reproduce the plots in the paper
 
+One can use multiple machines to run different systems to save time when reproducing the experiments in the paper.
+But it must be noted that the hardware specs across different machines must be similar if not identical,
+otherwise the results are not comparable.
+
 ```
 # Full-Index
 ./scripts/eval full <mount_point> <checkpoint_path>
@@ -225,6 +241,8 @@ The scripts will save the vector plots in PDF format in a folder named `figs`.
 It will write the specified number of keys in shuffled order.
 It loads the DB in 200 rounds, outputing one line of stat each round to both `stderr` and `stdout`.
 
+This experiment might take up to two hours to finish.
+
 To run a loading experiment
 ```
 `./scripts/load_exp <db_name> <number_of_keys> <key_length> <value_length> <mount_point>`
@@ -242,6 +260,8 @@ To run a loading experiment
 ```
 
 #### Read experiments
+
+These experiments might take up to one hour to finish.
 
 `./scripts/read_bench` runs the read experiments.
 It will first warm up the page cache then perform the read experiments.
@@ -264,6 +284,8 @@ skewed range query, and skewed point query.
 Note here that we open RocksDB in read-only mode to make sure all systems are evaluated equally.
 
 #### YCSB
+
+These experiments might take up to one hour to finish.
 
 `./scripts/ycsb` runs the YCSB experiments.
 It will first warmup the page cache then run the YCSB workloads from A to F.
